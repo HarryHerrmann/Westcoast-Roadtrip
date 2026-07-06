@@ -128,6 +128,17 @@
     .rate-info { font-size: 12px; color: var(--text-secondary); text-align: center; margin-top: 8px; }
     .swap-btn { background: var(--accent); color: #fff; border: none; border-radius: 50%; width: 40px; height: 40px; font-size: 18px; cursor: pointer; display: block; margin: 0 auto; }
     .footer { text-align: center; color: var(--text-secondary); font-size: 12px; padding: 20px; }
+    /* Dokument-Viewer */
+    .doc-modal { padding: 0; display: flex; flex-direction: column; max-height: 90vh; }
+    .doc-modal-head { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: var(--card-bg); border-bottom: 1px solid var(--border); }
+    .doc-modal-title { flex: 1; font-weight: 700; font-size: 14px; word-break: break-word; }
+    .doc-close-btn { background: #dc2626; color: #fff; border: none; border-radius: 8px; padding: 8px 12px; font-size: 14px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+    .doc-modal-body { flex: 1; overflow: auto; padding: 12px 14px; }
+    .doc-modal-body img { max-width: 100%; max-height: 72vh; object-fit: contain; display: block; margin: 0 auto; border-radius: 8px; }
+    .doc-modal-body iframe { width: 100%; height: 62vh; border: 1px solid var(--border); border-radius: 8px; }
+    .doc-modal-foot { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 14px; border-top: 1px solid var(--border); background: var(--card-bg); }
+    .doc-action { flex: 1; min-width: 130px; text-align: center; background: var(--accent); color: #fff; text-decoration: none; padding: 12px; border-radius: 8px; font-size: 14px; font-weight: 600; border: none; cursor: pointer; }
+    .doc-action.secondary { background: var(--bg); color: var(--text); border: 1px solid var(--border); }
   </style>
 </head>
 <body>
@@ -221,11 +232,17 @@
 
 <!-- DOKUMENT VIEWER MODAL -->
 <div class="modal-overlay" id="docModal" onclick="if(event.target===this)closeModal('docModal')">
-  <div class="modal">
-    <button class="close-x" onclick="closeModal('docModal')">×</button>
-    <h2 id="docTitle" style="font-size:16px;word-break:break-word;padding-right:30px">Dokument</h2>
-    <div id="docView" style="margin:12px 0"></div>
-    <a id="docDownload" class="chip-link" download style="display:inline-block">⬇️ Herunterladen</a>
+  <div class="modal doc-modal">
+    <div class="doc-modal-head">
+      <span id="docTitle" class="doc-modal-title">Dokument</span>
+      <button class="doc-close-btn" onclick="closeModal('docModal')">✕ Schließen</button>
+    </div>
+    <div id="docView" class="doc-modal-body"></div>
+    <div class="doc-modal-foot">
+      <a id="docOpen" class="doc-action" target="_blank" rel="noopener">🔎 In neuem Tab öffnen</a>
+      <a id="docDownload" class="doc-action secondary" download>⬇️ Herunterladen</a>
+      <button class="doc-action secondary" onclick="closeModal('docModal')">Schließen</button>
+    </div>
   </div>
 </div>
 
@@ -490,18 +507,20 @@ function showInViewer(d){
   document.getElementById('docTitle').textContent=(d.icon?d.icon+' ':'')+d.name;
   var view=document.getElementById('docView');
   var dl=document.getElementById('docDownload');
+  var op=document.getElementById('docOpen');
   var src = d.url ? d.url : (d.data||'');   // verlinkte Datei ODER eingebettete Daten
   var type = d.type || '';
   var isImg = (type.indexOf('image')>-1) || src.indexOf('image/')>-1 || /\.(png|jpe?g|gif|webp|heic)$/i.test(src);
   var isPdf = (type.indexOf('pdf')>-1) || src.indexOf('application/pdf')>-1 || /\.pdf$/i.test(src);
   dl.href=src; dl.download=d.name;
+  op.href=src;
   if(isImg){
-    view.innerHTML='<img src="'+src+'" style="max-width:100%;border-radius:8px;display:block">';
+    view.innerHTML='<img src="'+src+'" alt="'+d.name+'">';
   } else if(isPdf){
-    view.innerHTML='<iframe src="'+src+'" style="width:100%;height:65vh;border:1px solid var(--border);border-radius:8px"></iframe>'
-      +'<p style="font-size:12px;color:var(--text-secondary);margin-top:8px">Falls die PDF-Vorschau leer bleibt, bitte unten herunterladen.</p>';
+    view.innerHTML='<iframe src="'+src+'#view=FitH" title="'+d.name+'"></iframe>'
+      +'<p style="font-size:12px;color:var(--text-secondary);margin-top:8px">Tipp: Für die beste Ansicht (Zoomen, Blättern) oben „In neuem Tab öffnen" nutzen.</p>';
   } else {
-    view.innerHTML='<p style="color:var(--text-secondary);font-size:14px">Für diesen Dateityp ('+(type||'unbekannt')+') gibt es keine Vorschau. Bitte herunterladen.</p>';
+    view.innerHTML='<p style="color:var(--text-secondary);font-size:14px">Für diesen Dateityp ('+(type||'unbekannt')+') gibt es keine Vorschau. Bitte „In neuem Tab öffnen" oder herunterladen.</p>';
   }
   document.getElementById('docModal').classList.add('open');
 }
@@ -538,21 +557,7 @@ function openAllDocs(){
   document.getElementById('allDocsModal').classList.add('open');
 }
 function viewDoc(idx,di){
-  var d=docs[idx][di];
-  document.getElementById('docTitle').textContent=d.icon+' '+d.name;
-  var view=document.getElementById('docView');
-  var dl=document.getElementById('docDownload');
-  dl.href=d.data; dl.download=d.name;
-  var data=d.data||'';
-  if(data.indexOf('image/')>-1){
-    view.innerHTML='<img src="'+data+'" style="max-width:100%;border-radius:8px;display:block">';
-  } else if(data.indexOf('application/pdf')>-1){
-    view.innerHTML='<iframe src="'+data+'" style="width:100%;height:65vh;border:1px solid var(--border);border-radius:8px"></iframe>'
-      +'<p style="font-size:12px;color:var(--text-secondary);margin-top:8px">Falls die PDF-Vorschau leer bleibt, bitte unten herunterladen.</p>';
-  } else {
-    view.innerHTML='<p style="color:var(--text-secondary);font-size:14px">Für diesen Dateityp ('+(d.type||'unbekannt')+') gibt es keine Vorschau. Bitte herunterladen.</p>';
-  }
-  document.getElementById('docModal').classList.add('open');
+  showInViewer(docs[idx][di]);
 }
 function moveDoc(fromIdx, di, toIdx){
   toIdx=parseInt(toIdx,10);
