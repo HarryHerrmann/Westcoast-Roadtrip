@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="pragma" content="no-cache">
+  <meta http-equiv="expires" content="0">
+  <title>Westcoast Roadtrip 2026</title>
+  <style>
+    :root {
+      --bg: #f0f4f8;
+      --card-bg: #ffffff;
+      --text: #1e293b;
+      --text-secondary: #64748b;
+      --border: #e2e8f0;
+      --accent: #3b82f6;
+    }
+    body.dark-mode {
+      --bg: #0f172a;
+      --card-bg: #1e293b;
+      --text: #e2e8f0;
+      --text-secondary: #94a3b8;
+      --border: #334155;
+      --accent: #60a5fa;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg); color: var(--text);
+      line-height: 1.6;
+      transition: background 0.3s, color 0.3s;
+    }
+    /* LOGIN */
+    .login-screen { position: fixed; top:0; left:0; right:0; bottom:0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; z-index: 9999; }
+    .login-box { background: white; padding: 40px; border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); text-align: center; width: 90%; max-width: 360px; }
+    .login-box h1 { margin: 0 0 8px 0; font-size: 26px; color: #1e293b; }
+    .login-box p { color: #64748b; margin: 0 0 20px 0; }
+    .login-box input { width: 100%; padding: 14px; margin: 8px 0; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 16px; }
+    .login-box button { width: 100%; padding: 14px; margin-top: 16px; background: #667eea; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; }
+    .login-box button:active { background: #764ba2; }
+    /* HEADER */
+    header { background: var(--card-bg); border-bottom: 1px solid var(--border); padding: 14px 16px; }
+    .header-content { max-width: 760px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    .header-left h1 { margin: 0; font-size: 18px; }
+    .header-left .sub { font-size: 12px; color: var(--text-secondary); }
+    .header-right { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+    .hbtn { background: var(--accent); color: white; border: none; border-radius: 8px; padding: 8px 10px; cursor: pointer; font-size: 13px; }
+    .hbtn.secondary { background: var(--bg); color: var(--text); border: 1px solid var(--border); }
+    .hbtn.drive { background: #16a34a; }
+    /* STATS */
+    .stats { max-width: 760px; margin: 10px auto 0; padding: 0 16px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .stat { background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 8px; text-align: center; }
+    .stat .num { font-size: 18px; font-weight: bold; color: var(--accent); }
+    .stat .lbl { font-size: 10px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .5px; }
+    /* SEARCH */
+    .searchbar { max-width: 760px; margin: 12px auto 0; padding: 0 16px; }
+    .searchbar input { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 10px; font-size: 15px; background: var(--card-bg); color: var(--text); }
+    /* QUICKBAR */
+    .quick-bar { max-width: 760px; margin: 12px auto; padding: 0 16px; display: flex; gap: 8px; overflow-x: auto; flex-wrap: wrap; justify-content: center; }
+    .quick-bar button { width: 46px; height: 46px; border-radius: 50%; border: 2px solid var(--border); background: var(--card-bg); font-size: 20px; cursor: pointer; transition: transform .15s; }
+    .quick-bar button:active { transform: scale(1.1); }
+    .quick-bar button.active { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent); }
+    .quick-bar button.done { border-color: #16a34a; }
+    /* MAIN */
+    main { max-width: 760px; margin: 0 auto; padding: 8px 16px 60px; }
+    .station-card { background: var(--card-bg); border-radius: 16px; overflow: hidden; margin-bottom: 24px; box-shadow: 0 4px 16px rgba(0,0,0,0.08); border: 1px solid var(--border); }
+    .station-header { padding: 22px 20px; color: white; position: relative; }
+    .station-title { font-size: 26px; margin: 0 0 4px 0; font-weight: 800; }
+    .station-subtitle { font-size: 14px; opacity: 0.92; margin: 0; }
+    .done-badge { position: absolute; top: 16px; right: 16px; background: rgba(255,255,255,.25); padding: 4px 10px; border-radius: 20px; font-size: 12px; }
+    .station-body { padding: 20px; }
+    .info-row { display: flex; justify-content: space-between; gap: 12px; margin: 8px 0; font-size: 14px; }
+    .info-row strong { color: var(--text-secondary); font-weight: 600; }
+    .route-box { background: linear-gradient(135deg, rgba(59,130,246,.12), rgba(59,130,246,.04)); border: 1px solid var(--accent); border-radius: 10px; padding: 12px; margin: 12px 0; }
+    .route-box .rt-title { font-weight: 700; font-size: 13px; margin-bottom: 4px; }
+    .route-btn { display: inline-block; margin-top: 8px; background: var(--accent); color: #fff; text-decoration: none; padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; }
+    .warning-banner { background: #fee2e2; border-left: 4px solid #ef4444; padding: 12px; margin: 12px 0; border-radius: 6px; color: #7f1d1d; font-size: 14px; }
+    .timezone-banner { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 12px; margin: 12px 0; border-radius: 6px; color: #78350f; font-size: 14px; }
+    .weather-box { background: var(--bg); padding: 14px; border-radius: 10px; margin: 12px 0; }
+    .weather-top { display: flex; align-items: center; gap: 12px; }
+    .weather-temp { font-size: 28px; font-weight: 800; }
+    .weather-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; font-size: 13px; }
+    .weather-tip { font-size: 13px; color: var(--text-secondary); margin-top: 8px; }
+    .collapsible { background: var(--bg); padding: 12px 14px; margin: 10px 0 0; border-radius: 10px; cursor: pointer; user-select: none; display: flex; justify-content: space-between; align-items: center; font-weight: 600; font-size: 14px; }
+    .collapsible:after { content: '▼'; font-size: 10px; color: var(--text-secondary); transition: transform .2s; }
+    .collapsible.open:after { transform: rotate(180deg); }
+    .collapsible.open + .collapsible-content { display: block; }
+    .collapsible-content { display: none; padding: 12px; background: var(--bg); border-radius: 0 0 10px 10px; margin-top: -4px; }
+    .booking-item, .highlight-item, .doc-item { background: var(--card-bg); border: 1px solid var(--border); padding: 12px; margin: 8px 0; border-radius: 8px; }
+    .booking-title, .highlight-name { font-weight: 700; font-size: 14px; }
+    .booking-detail { font-size: 12px; color: var(--text-secondary); margin: 3px 0; font-family: monospace; }
+    .highlight-desc { font-size: 13px; margin: 4px 0; color: var(--text-secondary); }
+    .chip-link { display: inline-block; margin: 8px 6px 0 0; padding: 6px 12px; background: var(--accent); color: white; text-decoration: none; border-radius: 6px; font-size: 12px; }
+    .chip-link.nav { background: #16a34a; }
+    textarea.notes { width: 100%; min-height: 80px; padding: 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--card-bg); color: var(--text); font-family: inherit; font-size: 14px; resize: vertical; }
+    .notes-saved { font-size: 12px; color: #16a34a; margin-top: 4px; height: 16px; }
+    /* DROPZONE */
+    .dropzone { border: 2px dashed var(--border); border-radius: 12px; padding: 24px; text-align: center; transition: all .2s; cursor: pointer; background: var(--bg); }
+    .dropzone.active { border-color: var(--accent); background: rgba(59,130,246,.08); }
+    .dropzone .dz-icon { font-size: 32px; }
+    .dropzone .dz-main { font-weight: 700; margin: 8px 0 2px; }
+    .dropzone .dz-sub { font-size: 12px; color: var(--text-secondary); }
+    .doc-item { display: flex; align-items: center; gap: 10px; }
+    .doc-cat { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 12px; background: var(--accent); color: #fff; }
+    .doc-meta { flex: 1; min-width: 0; }
+    .doc-name { font-size: 13px; font-weight: 600; word-break: break-word; }
+    .doc-sub { font-size: 11px; color: var(--text-secondary); }
+    .doc-move { margin-top: 6px; width: 100%; padding: 6px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font-size: 12px; }
+    .icon-btn { background: none; border: none; cursor: pointer; font-size: 16px; padding: 4px; color: var(--text-secondary); }
+    /* NAV BUTTONS */
+    .nav-buttons { display: flex; gap: 8px; margin-top: 20px; }
+    .nav-buttons button { flex: 1; padding: 12px; background: var(--accent); color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: 700; font-size: 14px; }
+    .nav-buttons button:active { opacity: .85; }
+    .markdone { width: 100%; margin-top: 10px; padding: 12px; border: none; border-radius: 10px; cursor: pointer; font-weight: 700; font-size: 14px; }
+    .markdone.todo { background: #16a34a; color: #fff; }
+    .markdone.isdone { background: var(--bg); color: var(--text-secondary); border: 1px solid var(--border); }
+    /* MODAL */
+    .modal-overlay { position: fixed; top:0; left:0; right:0; bottom:0; background: rgba(0,0,0,.5); display: none; align-items: flex-end; justify-content: center; z-index: 5000; }
+    .modal-overlay.open { display: flex; }
+    .modal { background: var(--card-bg); width: 100%; max-width: 760px; border-radius: 16px 16px 0 0; padding: 20px; max-height: 85vh; overflow-y: auto; }
+    .modal h2 { margin: 0 0 16px; font-size: 20px; }
+    .modal .close-x { float: right; background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-secondary); }
+    .conv-row { display: flex; gap: 10px; align-items: center; margin: 12px 0; }
+    .conv-row input { flex: 1; padding: 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 18px; background: var(--card-bg); color: var(--text); }
+    .conv-row .cur { font-weight: 700; width: 50px; }
+    .rate-info { font-size: 12px; color: var(--text-secondary); text-align: center; margin-top: 8px; }
+    .swap-btn { background: var(--accent); color: #fff; border: none; border-radius: 50%; width: 40px; height: 40px; font-size: 18px; cursor: pointer; display: block; margin: 0 auto; }
+    .footer { text-align: center; color: var(--text-secondary); font-size: 12px; padding: 20px; }
+  </style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginScreen" class="login-screen">
+  <div class="login-box">
+    <h1>🚗 Westcoast Roadtrip</h1>
+    <p>Bitte Passwort eingeben</p>
+    <input type="password" id="passwordInput" placeholder="Passwort" onkeypress="if(event.key==='Enter') doLogin()">
+    <button onclick="doLogin()">Einloggen</button>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app" style="display:none;">
+  <header>
+    <div class="header-content">
+      <div class="header-left">
+        <h1>🚗 Westcoast Roadtrip 2026</h1>
+        <div class="sub" id="countdown"></div>
+      </div>
+      <div class="header-right">
+        <button class="hbtn" onclick="openAllDocs()">📎 Dokumente</button>
+        <button class="hbtn" onclick="openConverter()">💱 Währung</button>
+        <button class="hbtn" style="background:#dc2626" onclick="openEmergency()">🆘 Notfall</button>
+        <button class="hbtn drive" onclick="openDrive()">📁 Drive</button>
+        <button class="hbtn secondary" onclick="setDrive()" title="Drive-Ordner festlegen">⚙️</button>
+        <button class="hbtn secondary" onclick="toggleDarkMode()" id="darkBtn">🌙</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="stats" id="stats"></div>
+  <div class="searchbar"><input type="text" id="searchInput" placeholder="🔍 Suche Stationen, Hotels, Highlights..." oninput="doSearch()"></div>
+  <div class="quick-bar" id="quickBar"></div>
+  <main id="mainContent"></main>
+  <div class="footer">🌄 Gute Reise! · Westcoast Roadtrip Planner 2026</div>
+</div>
+
+<!-- WÄHRUNGSRECHNER MODAL -->
+<div class="modal-overlay" id="convModal" onclick="if(event.target===this)closeModal('convModal')">
+  <div class="modal">
+    <button class="close-x" onclick="closeModal('convModal')">×</button>
+    <h2>💱 Währungsrechner</h2>
+    <div class="conv-row"><input type="number" id="eurInput" placeholder="0" oninput="convFromEur()"><span class="cur">EUR €</span></div>
+    <button class="swap-btn" onclick="swapConv()">⇅</button>
+    <div class="conv-row"><input type="number" id="usdInput" placeholder="0" oninput="convFromUsd()"><span class="cur">USD $</span></div>
+    <div class="rate-info" id="rateInfo">Kurs wird geladen...</div>
+  </div>
+</div>
+
+<!-- NOTFALL MODAL -->
+<div class="modal-overlay" id="emModal" onclick="if(event.target===this)closeModal('emModal')">
+  <div class="modal">
+    <button class="close-x" onclick="closeModal('emModal')">×</button>
+    <h2>🆘 Notfall & wichtige Nummern</h2>
+    <div class="booking-item"><div class="booking-title">🚑 Notruf USA (Polizei/Feuer/Rettung)</div><a class="chip-link" href="tel:911">911 anrufen</a></div>
+    <div class="booking-item"><div class="booking-title">☠️ Giftnotruf</div><a class="chip-link" href="tel:18002221222">1-800-222-1222</a></div>
+    <div class="booking-item"><div class="booking-title">🇩🇪 Deutsche Botschaft Washington</div><a class="chip-link" href="tel:+12022984000">+1 202-298-4000</a></div>
+    <div class="booking-item"><div class="booking-title">🇩🇪 Generalkonsulat San Francisco</div><a class="chip-link" href="tel:+14157751061">+1 415-775-1061</a></div>
+    <div class="booking-item"><div class="booking-title">🇩🇪 Generalkonsulat Los Angeles</div><a class="chip-link" href="tel:+13239302703">+1 323-930-2703</a></div>
+    <div class="booking-item"><div class="booking-title">🚗 Enterprise Pannenhilfe</div><a class="chip-link" href="tel:18002617331">1-800-261-7331</a></div>
+    <div class="booking-item"><div class="booking-title">🛡️ Versicherungs-Hotline</div><div class="booking-detail">Nummer auf eurer Versicherungs-Police prüfen (im Drive-Ordner ablegen)</div></div>
+  </div>
+</div>
+
+<!-- DRIVE MODAL -->
+<div class="modal-overlay" id="driveModal" onclick="if(event.target===this)closeModal('driveModal')">
+  <div class="modal">
+    <button class="close-x" onclick="closeModal('driveModal')">×</button>
+    <h2>📁 Drive-Ordner</h2>
+    <p style="font-size:13px;color:var(--text-secondary);margin-top:0">Hinterlege deine eigene Google-Drive-Ordner-URL. Sie wird nur in deinem Browser gespeichert — so kann jeder seinen eigenen Ordner nutzen.</p>
+    <input type="text" id="driveInput" placeholder="https://drive.google.com/drive/folders/..." style="width:100%;padding:12px;border:1px solid var(--border);border-radius:8px;background:var(--card-bg);color:var(--text);font-size:14px">
+    <div id="driveStatus" style="font-size:12px;color:#16a34a;height:16px;margin-top:6px"></div>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button class="hbtn" style="flex:1;padding:12px" onclick="saveDrive()">💾 Speichern</button>
+      <button class="hbtn drive" style="flex:1;padding:12px" onclick="openSavedDrive()">↗️ Ordner öffnen</button>
+    </div>
+  </div>
+</div>
+
+<!-- ALLE DOKUMENTE MODAL -->
+<div class="modal-overlay" id="allDocsModal" onclick="if(event.target===this)closeModal('allDocsModal')">
+  <div class="modal">
+    <button class="close-x" onclick="closeModal('allDocsModal')">×</button>
+    <h2 id="allDocsTitle">📎 Alle Dokumente</h2>
+    <div id="allDocsList"></div>
+  </div>
+</div>
+
+<!-- DOKUMENT VIEWER MODAL -->
+<div class="modal-overlay" id="docModal" onclick="if(event.target===this)closeModal('docModal')">
+  <div class="modal">
+    <button class="close-x" onclick="closeModal('docModal')">×</button>
+    <h2 id="docTitle" style="font-size:16px;word-break:break-word;padding-right:30px">Dokument</h2>
+    <div id="docView" style="margin:12px 0"></div>
+    <a id="docDownload" class="chip-link" download style="display:inline-block">⬇️ Herunterladen</a>
+  </div>
+</div>
+
+<script>
+// ===== AUTH =====
+function hashCode(s){var h=0;for(var i=0;i<s.length;i++){h=((h<<5)-h)+s.charCodeAt(i);h|=0;}return h;}
+function doLogin(){
+  var pwd=document.getElementById('passwordInput').value;
+  if(hashCode(pwd)===-795132466){
+    sessionStorage.setItem('loggedIn','true');
+    document.getElementById('loginScreen').style.display='none';
+    document.getElementById('app').style.display='block';
+    initApp();
+  }else{
+    alert('Falsches Passwort');
+    document.getElementById('passwordInput').value='';
+  }
+}
+if(sessionStorage.getItem('loggedIn')==='true'){
+  document.getElementById('loginScreen').style.display='none';
+  document.getElementById('app').style.display='block';
+}
+
+// ===== CONFIG =====
+var DRIVE_URL = 'https://drive.google.com/drive/u/0/folders/10HUOZwrt32V4ZyQyorjPOAy1xGiifV-l';
+var TRIP_START = '2026-07-07';
+var FALLBACK_RATE = 1.08; // 1 EUR = X USD
+var rate = FALLBACK_RATE;
+
+// ============================================================
+// ===== HIER GETEILTE DRIVE-LINKS EINTRAGEN ==================
+// Diese Links sind nach dem GitHub-Upload für ALLE sichtbar.
+// Pro Station-Nummer (0 = San Francisco Ankunft ... 11 = San Francisco Ende)
+// eine Liste mit { name: 'Anzeigename', url: 'Drive-Freigabe-Link' }.
+// WICHTIG: In Google Drive die Datei auf "Jeder mit dem Link" freigeben!
+// Stations-Nummern:
+//  0 San Francisco (Ankunft)   1 Yosemite        2 Death Valley
+//  3 Bryce Canyon              4 Page, Arizona   5 Grand Canyon
+//  6 Las Vegas                 7 San Diego       8 Los Angeles
+//  9 Santa Barbara            10 Monterey       11 San Francisco (Ende)
+var SHARED_LINKS = {
+  // Beispiele — entferne das // und setze deine echten Links ein:
+  // 4: [ { name: 'Bootstour Lake Powell', url: 'https://drive.google.com/file/d/XXXX/view' } ],
+  // 6: [ { name: 'Ticket Ed Sheeran',     url: 'https://drive.google.com/file/d/YYYY/view' } ],
+  // 0: [ { name: 'Mietwagen Enterprise',  url: 'https://drive.google.com/file/d/ZZZZ/view' } ]
+};
+// ============================================================
+
+// Fest eingebettete Dokumente (werden per Skript befüllt) — für alle sichtbar
+var SHARED_DOCS = {"0": [{"name": "2116424053 Mietwagen Voucher Herrrmann", "type": "application/pdf", "url": "docs/2116424053-mietwagen-voucher-herrrmann.pdf"}, {"name": "American.Beauty-Pass", "type": "application/pdf", "url": "docs/american-beauty-pass.pdf"}, {"name": "Flugtickets und Sitzpältze Flüge hin und zurück", "type": "application/pdf", "url": "docs/flugtickets-und-sitzpaeltze-fluege-hin-und-zurueck.pdf"}, {"name": "Harry-Esta-2026-Official ESTA Application Website, U.S. Customs and Border Prote", "type": "application/pdf", "url": "docs/harry-esta-2026-official-esta-application-website-.pdf"}, {"name": "Hotrel FLughafen Terminal 189181289 for Sheraton Frankfurt Airport Hotel and Con", "type": "application/pdf", "url": "docs/hotrel-flughafen-terminal-189181289-for-sheraton-f.pdf"}, {"name": "Jana Herrmann Reisepass", "type": "application/pdf", "url": "docs/jana-herrmann-reisepass.pdf"}, {"name": "Jana-ESTA-2026-Official ESTA Application Website, U.S. Customs and Border Protec", "type": "application/pdf", "url": "docs/jana-esta-2026-official-esta-application-website-u.pdf"}, {"name": "Leo Elias Herrmann Reisepass", "type": "application/pdf", "url": "docs/leo-elias-herrmann-reisepass.pdf"}, {"name": "Leo-Esta-2026-Official ESTA Application Website, U.S. Customs and Border Protect", "type": "application/pdf", "url": "docs/leo-esta-2026-official-esta-application-website-u-.pdf"}, {"name": "Mietwagen Zusatz-Haftpflicht", "type": "application/pdf", "url": "docs/mietwagen-zusatz-haftpflicht.pdf"}, {"name": "Parkos Velvet Parken Frankfurt", "type": "application/pdf", "url": "docs/parkos-velvet-parken-frankfurt.pdf"}, {"name": "Piet-ESTA-2026-Official ESTA Application Website, U.S. Customs and Border Protec", "type": "application/pdf", "url": "docs/piet-esta-2026-official-esta-application-website-u.pdf"}, {"name": "REISEPASS HARALD TOBIAS HERRMANN", "type": "application/pdf", "url": "docs/reisepass-harald-tobias-herrmann.pdf"}, {"name": "REISEPASS PIET TIMON HERRMANN", "type": "application/pdf", "url": "docs/reisepass-piet-timon-herrmann.pdf"}], "4": [{"name": "Anteloop Canyon Eintritt 14.07.26-CHDYAA0X1    4 Guest(s)", "type": "application/pdf", "url": "docs/anteloop-canyon-eintritt-14-07-26-chdyaa0x1-4-gues.pdf"}, {"name": "Boot Tour Lake Powel", "type": "application/pdf", "url": "docs/boot-tour-lake-powel.pdf"}, {"name": "Eintrittspreis  Antelope Canyon - Entry Fee on Tuesday, July 14, 2026", "type": "application/pdf", "url": "docs/eintrittspreis-antelope-canyon-entry-fee-on-tuesda.pdf"}], "2": [{"name": "Death-Valley-Booking.com  Bestätigung", "type": "application/pdf", "url": "docs/death-valley-booking-com-bestaetigung.pdf"}], "6": [{"name": "ED-Sheeran-Ticket Order Confirmed - GoTickets Order #5485985 (Ticketbestellung b", "type": "application/pdf", "url": "docs/ed-sheeran-ticket-order-confirmed-gotickets-order-.pdf"}], "11": [{"name": "Tickets-Alcatraz-30.07", "type": "application/pdf", "url": "docs/tickets-alcatraz-30-07.pdf"}], "1": [{"name": "Yousemite Booking.com  Bestätigung", "type": "application/pdf", "url": "docs/yousemite-booking-com-bestaetigung.pdf"}, {"name": "Yousemite Tickets Park", "type": "application/pdf", "url": "docs/yousemite-tickets-park.pdf"}]};
+
+// ===== STATE =====
+var current = 0;
+var darkMode = localStorage.getItem('darkMode')==='true';
+var notes = JSON.parse(localStorage.getItem('rt_notes')||'{}');
+var docs = JSON.parse(localStorage.getItem('rt_docs')||'{}');
+var doneStations = JSON.parse(localStorage.getItem('rt_done')||'{}');
+var links = JSON.parse(localStorage.getItem('rt_links')||'{}');
+
+// ===== DATA =====
+var STOPS = [
+  {city:'San Francisco',subtitle:'Ankunft & Start',dates:'07.07.2026',nights:0,hotel:null,icon:'✈️',address:'San Francisco International Airport, CA',routeFrom:null,arrival:'Landung 12:20 Uhr — Mietwagen abholen & Weiterfahrt nach Yosemite',warning:null,timezone:null,weather:{icon:'🌫️',condition:'Nebelig bis mild',tempHigh:21,tempLow:13,humidity:'75%',uv:'6 (Mittel)',tip:'San Francisco ist im Juli oft kühl und nebelig — Jacke einpacken! Nachmittags klart es meist auf.'},bookings:[{title:'Mietwagen Enterprise',icon:'🚗',price:null,details:['Fahrzeug: Premium Crossover SUV','Abholung: 07.07.2026, 13:00 Uhr','Rückgabe: 30.07.2026, 17:00 Uhr','Ort: SFO Airport','Bestätigung: 2116424053'],bookingWarning:'Rückgabe am 30.07. — SF-Aufenthalt geht bis 01.08.! Prüft ob ihr verlängern müsst.'}],highlights:[],nextDistance:310,nextTime:'ca. 3,5 – 4 Std.',nextTo:'Yosemite'},
+  {city:'Yosemite National Park',subtitle:'Naturwunder & Wasserfälle',dates:'07.07. – 10.07.2026',nights:3,hotel:'Rush Creek Lodge at Yosemite',icon:'🏔️',address:'Rush Creek Lodge, 34001 Highway 120, Groveland, CA 95321',routeFrom:'San Francisco',warning:null,timezone:null,weather:{icon:'☀️',condition:'Sonnig & warm',tempHigh:32,tempLow:14,humidity:'20%',uv:'10 (Sehr hoch)',tip:'Tagsüber heiß, nachts kühl — Schichten anziehen! Sonnenschutz & mind. 2L Wasser pro Person auf Wanderungen.'},bookings:[{title:'Rush Creek Lodge',icon:'🏡',price:'ca. €2.332 / $2.707',details:['Villa mit 2 Schlafzimmern & 2 Kingsize-Betten','Check-in: 07.07., 16:00','Check-out: 10.07., bis 11:00','3 Erwachsene + 1 Kind (14 J.)','Buchung: #6911.211.607 | PIN: 9826'],extras:'Balkon, Bergblick, Kamin, WLAN kostenlos'}],highlights:[{name:'Glacier Point',tipIcon:'🌅',desc:'Panoramablick über das Yosemite Valley — einer der besten Aussichtspunkte der Welt',bestTime:'Sonnenuntergang 20:00–20:30',url:'https://www.nps.gov/yose/planyourvisit/glacierpoint.htm',urlLabel:'NPS Info',navAddress:'Glacier Point, Yosemite National Park, CA'},{name:'Yosemite Falls',tipIcon:'🌈',desc:'739m — höchster Wasserfall Nordamerikas',bestTime:'Vormittags 9–11 Uhr für Regenbogen',url:'https://www.nps.gov/yose/planyourvisit/yosemitefalls.htm',urlLabel:'NPS Info',navAddress:'Yosemite Falls Trail, Yosemite, CA'},{name:'Half Dome Aussicht',tipIcon:'📸',desc:'Wahrzeichen des Parks — bestes Fotomotiv',bestTime:'Tunnel View morgens',navAddress:'Tunnel View, Yosemite National Park, CA'}],nextDistance:500,nextTime:'ca. 5,5 – 6 Std.',nextTo:'Death Valley'},
+  {city:'Death Valley',subtitle:'Extremste Hitze & Wüste',dates:'10.07. – 11.07.2026',nights:1,hotel:'The Ranch At Death Valley',icon:'🌵',address:'The Ranch at Death Valley, Highway 190, Death Valley, CA 92328',routeFrom:'Yosemite National Park',warning:'HITZE-WARNUNG: Death Valley im Juli bis 55°C! Immer mind. 4L Wasser pro Person. Outdoor nur vor 9 Uhr oder nach 18 Uhr!',timezone:null,weather:{icon:'🔥',condition:'Extrem heiß',tempHigh:50,tempLow:35,humidity:'5%',uv:'11+ (Extrem)',tip:'Heißester Ort der Erde im Juli! Aktivitäten NUR vor 9 Uhr oder nach 18 Uhr. Motor aus = Klimaanlage aus = Lebensgefahr!'},bookings:[{title:'The Ranch at Death Valley',icon:'🏨',price:'ca. €166 / $192,63',details:['Standard Zimmer (2 Doppelbetten)','Check-in: 10.07., 16:00 – 22:00','Check-out: 11.07., bis 11:00','Buchung: #5365.002.301 | PIN: 7087'],extras:'Klimaanlage, TV, Parkplatz kostenlos'}],highlights:[{name:'Zabriskie Point',tipIcon:'🌅',desc:'Spektakulärer Sonnenaufgangs-Spot — surreale Felsformationen',bestTime:'Sonnenaufgang ca. 5:30 Uhr',url:'https://www.nps.gov/deva/planyourvisit/zabriskie-point.htm',urlLabel:'NPS Info',navAddress:'Zabriskie Point, Death Valley, CA'},{name:'Badwater Basin',tipIcon:'📍',desc:'Tiefster Punkt Nordamerikas: -86m',bestTime:'Nur früh morgens (vor 9 Uhr)!',navAddress:'Badwater Basin, Death Valley, CA'},{name:'Mesquite Flat Sand Dunes',tipIcon:'🏜️',desc:'Berühmte Sanddünen — Star Wars Drehort',bestTime:'Sonnenauf-/untergang',navAddress:'Mesquite Flat Sand Dunes, Death Valley, CA'}],nextDistance:620,nextTime:'ca. 6 – 7 Std.',nextTo:'Bryce Canyon'},
+  {city:'Bryce Canyon',subtitle:'Hoodoos & Sonnenaufgang',dates:'11.07. – 13.07.2026',nights:2,hotel:'Bryce Canyon Lodge',icon:'🪨',address:'Bryce Canyon Lodge, Bryce Canyon National Park, UT',routeFrom:'Death Valley',warning:null,timezone:null,weather:{icon:'⛅',condition:'Sonnig mit Gewitterrisiko',tempHigh:28,tempLow:10,humidity:'30%',uv:'9 (Sehr hoch)',tip:'Auf 2.400m Höhe deutlich kühler. Nachmittags Gewitter möglich — Wanderungen morgens starten! Warme Jacke für Sonnenaufgang.'},bookings:[],highlights:[{name:'Sunrise Point',tipIcon:'🌅',desc:'Magischer Sonnenaufgang über den Hoodoos',bestTime:'Sonnenaufgang ca. 6:00 Uhr',url:'https://www.nps.gov/brca/planyourvisit/day-hikes.htm',urlLabel:'NPS Wanderwege',navAddress:'Sunrise Point, Bryce Canyon, UT'},{name:'Navajo Loop Trail',tipIcon:'🥾',desc:'2,2 km Rundwanderung zwischen die Hoodoos',bestTime:'Vormittags',navAddress:'Navajo Loop Trail, Bryce Canyon, UT'},{name:'Bryce Amphitheater',tipIcon:'📸',desc:'Größtes natürliches Amphitheater der Welt',bestTime:'Nachmittags-Licht',navAddress:'Inspiration Point, Bryce Canyon, UT'}],nextDistance:250,nextTime:'ca. 3 – 3,5 Std.',nextTo:'Page'},
+  {city:'Page, Arizona',subtitle:'Lichtspiele & Canyons',dates:'13.07. – 15.07.2026',nights:2,hotel:'Hyatt Place Page',icon:'🌀',address:'Hyatt Place Page, 3 Lakeshore Dr, Page, AZ 86040',routeFrom:'Bryce Canyon',warning:null,timezone:'Arizona hat KEINE Sommerzeit! Uhren ggf. 1 Std. anders als Utah/Nevada.',weather:{icon:'☀️',condition:'Heiß & trocken',tempHigh:39,tempLow:22,humidity:'15%',uv:'10 (Sehr hoch)',tip:'Sehr heiß! Antelope Canyon ist schattig, Horseshoe Bend nicht — früh oder spät gehen. Viel Wasser!'},bookings:[{title:'Bootstour Lake Powell',icon:'⛵',price:null,details:['Datum: 14.07.2026 um 15:30 Uhr','Bootstour (Details auf dem Ticket)']}],highlights:[{name:'Antelope Canyon',tipIcon:'✨',desc:'Berühmter Slot Canyon — magisches Lichtspiel',bestTime:'11–13 Uhr für die Lichtstrahlen',navAddress:'Antelope Canyon, Page, AZ'},{name:'Horseshoe Bend',tipIcon:'🌊',desc:'270° Flussschleife des Colorado River',bestTime:'Vormittags oder spätnachmittags',navAddress:'Horseshoe Bend, Page, AZ'},{name:'Lake Powell Bootstour',tipIcon:'🚤',desc:'Tour auf dem türkisblauen See (14.07.)',bestTime:'14.07. um 15:30 Uhr (gebucht)',navAddress:'Lake Powell Marina, Page, AZ'}],nextDistance:215,nextTime:'ca. 2,5 – 3 Std.',nextTo:'Grand Canyon'},
+  {city:'Grand Canyon',subtitle:'Das große Naturwunder',dates:'15.07. – 17.07.2026',nights:2,hotel:'Yavapai Lodge',icon:'🏜️',address:'Yavapai Lodge, Grand Canyon Village, AZ 86023',routeFrom:'Page, Arizona',warning:null,timezone:'Arizona hat KEINE Sommerzeit! Uhren ggf. 1 Std. anders als Utah/Nevada.',weather:{icon:'⛅',condition:'Heiß, nachmittags Monsun',tempHigh:34,tempLow:15,humidity:'30%',uv:'9 (Sehr hoch)',tip:'South Rim auf 2.100m — angenehmer als die Wüste. Ab 14 Uhr Monsun-Gewitter möglich! Morgens wandern.'},bookings:[],highlights:[{name:'Mather Point',tipIcon:'🌅',desc:'Der klassische erste Blick in den Grand Canyon',bestTime:'Sonnenaufgang ca. 5:20 Uhr',url:'https://www.nps.gov/grca/planyourvisit/south-rim.htm',urlLabel:'NPS South Rim',navAddress:'Mather Point, Grand Canyon Village, AZ'},{name:'South Rim Trail',tipIcon:'🚶',desc:'Barrierefreier Weg entlang der Canyon-Kante',bestTime:'Morgens/spätnachmittags',navAddress:'South Rim Trail, Grand Canyon, AZ'},{name:'Desert View Watchtower',tipIcon:'🏰',desc:'360° Panorama vom historischen Turm',bestTime:'Vormittags',navAddress:'Desert View Watchtower, Grand Canyon, AZ'}],nextDistance:450,nextTime:'ca. 4,5 – 5 Std.',nextTo:'Las Vegas'},
+  {city:'Las Vegas',subtitle:'Ed Sheeran, Route 66 & Strip',dates:'17.07. – 20.07.2026',nights:3,hotel:'The Venetian / Wynn',icon:'🎰',address:'The Venetian Resort, 3355 S Las Vegas Blvd, Las Vegas, NV 89109',routeFrom:'Grand Canyon',warning:null,timezone:null,weather:{icon:'🔥',condition:'Sehr heiß & sonnig',tempHigh:42,tempLow:28,humidity:'10%',uv:'11+ (Extrem)',tip:'Draußen extrem heiß — Sightseeing morgens/abends! Tagsüber klimatisierte Casinos nutzen. Fürs Ed-Sheeran-Konzert: Wasser!'},bookings:[{title:'Ed Sheeran — Allegiant Stadium',icon:'🎸',price:null,details:['Datum: 18.07.2026, 17:30 Uhr','Venue: Allegiant Stadium','4 Tickets — Section Club C112, Row 32','Zustellung: Mobile Transfer','GoTickets #5485985'],bookingWarning:'Prüft vor dem Konzert ob die Tickets in eurer Wallet/App sind!'}],highlights:[{name:'Route 66 — Kingman & Seligman',tipIcon:'🛣️',desc:'Nostalgische Route-66-Orte auf dem Weg',bestTime:'Auf der Fahrt einplanen',navAddress:'Seligman, AZ'},{name:'Ed Sheeran Konzert',tipIcon:'🎸',desc:'18.07. Allegiant Stadium — Club C112, Row 32',bestTime:'18.07.2026, 17:30 Uhr',navAddress:'Allegiant Stadium, Las Vegas, NV'},{name:'Las Vegas Strip',tipIcon:'🌃',desc:'Bellagio Fountains, Venetian, Wynn',bestTime:'Ab 20 Uhr',navAddress:'Las Vegas Strip, NV'},{name:'Fremont Street',tipIcon:'🎆',desc:'Das alte Vegas — überdachte Lichtshow',bestTime:'Ab 21 Uhr',navAddress:'Fremont Street Experience, Las Vegas, NV'}],nextDistance:530,nextTime:'ca. 5 – 5,5 Std.',nextTo:'San Diego'},
+  {city:'San Diego',subtitle:'Sonne, Strand & La Jolla',dates:'20.07. – 23.07.2026',nights:3,hotel:'Manchester Grand Hyatt',icon:'🏖️',address:'Manchester Grand Hyatt, 1 Market Pl, San Diego, CA 92101',routeFrom:'Las Vegas',warning:null,timezone:null,weather:{icon:'☀️',condition:'Sonnig & angenehm',tempHigh:26,tempLow:19,humidity:'65%',uv:'8 (Hoch)',tip:'Perfektes Strandwetter! Morgens leichter Küstennebel. Sonnenschutz am Strand nicht vergessen.'},bookings:[],highlights:[{name:'La Jolla Cove',tipIcon:'🦭',desc:'Malerische Bucht mit Seelöwen — Schnorcheln',bestTime:'Vormittags bei ruhiger See',navAddress:'La Jolla Cove, San Diego, CA'},{name:'Balboa Park & Zoo',tipIcon:'🌺',desc:'Riesiger Stadtpark mit weltberühmtem Zoo',bestTime:'Ganzer Tag',navAddress:'Balboa Park, San Diego, CA'},{name:'Gaslamp Quarter',tipIcon:'🍷',desc:'Historisches Viertel mit Nachtleben',bestTime:'Abends ab 18 Uhr',navAddress:'Gaslamp Quarter, San Diego, CA'}],nextDistance:200,nextTime:'ca. 2 – 2,5 Std.',nextTo:'Los Angeles'},
+  {city:'Los Angeles',subtitle:'Santa Monica & Strand',dates:'23.07. – 24.07.2026',nights:1,hotel:'Loews Santa Monica',icon:'🌴',address:'Loews Santa Monica Beach Hotel, 1700 Ocean Ave, Santa Monica, CA',routeFrom:'San Diego',warning:null,timezone:null,weather:{icon:'🌤️',condition:'Warm & sonnig',tempHigh:28,tempLow:18,humidity:'60%',uv:'8 (Hoch)',tip:'Santa Monica ist dank Meeresbrise kühler als Downtown LA. Abends leichte Jacke.'},bookings:[],highlights:[{name:'Santa Monica Pier',tipIcon:'🎡',desc:'Das Ende der Route 66 — Riesenrad, Strand',bestTime:'Sonnenuntergang',navAddress:'Santa Monica Pier, CA'},{name:'Venice Beach',tipIcon:'🛹',desc:'Boardwalk, Skatepark, Muscle Beach',bestTime:'Nachmittags',navAddress:'Venice Beach Boardwalk, CA'}],nextDistance:150,nextTime:'ca. 1,5 – 2 Std.',nextTo:'Santa Barbara'},
+  {city:'Santa Barbara',subtitle:'Amerikanische Riviera',dates:'24.07. – 27.07.2026',nights:3,hotel:'Harbor View Inn',icon:'🏝️',address:'Harbor View Inn, 28 W Cabrillo Blvd, Santa Barbara, CA',routeFrom:'Los Angeles',warning:null,timezone:null,weather:{icon:'☀️',condition:'Sonnig & mediterran',tempHigh:25,tempLow:16,humidity:'55%',uv:'7 (Hoch)',tip:'Herrliches mediterranes Klima! Perfekt für Strand und Spaziergänge. Abends leichte Brise.'},bookings:[],highlights:[{name:'Stearns Wharf',tipIcon:'🌅',desc:'Älteste Holzpier Kaliforniens',bestTime:'Sonnenuntergang',navAddress:'Stearns Wharf, Santa Barbara, CA'},{name:'East Beach',tipIcon:'🏖️',desc:'Wunderschöne Sandstrände',bestTime:'Ganzer Tag',navAddress:'East Beach, Santa Barbara, CA'},{name:'Old Mission Santa Barbara',tipIcon:'⛪',desc:"Historische Mission von 1786",bestTime:'Vormittags',navAddress:'Old Mission Santa Barbara, CA'},{name:'Funk Zone',tipIcon:'🍷',desc:'Trendiges Viertel mit Weinkellereien',bestTime:'Nachmittags',navAddress:'Funk Zone, Santa Barbara, CA'}],nextDistance:380,nextTime:'ca. 4 – 4,5 Std. (Highway 1!)',nextTo:'Monterey'},
+  {city:'Monterey',subtitle:'Highway 1 & Küste',dates:'27.07. – 28.07.2026',nights:1,hotel:'Monterey Plaza Hotel',icon:'🐋',address:'Monterey Plaza Hotel, 400 Cannery Row, Monterey, CA 93940',routeFrom:'Santa Barbara',warning:null,timezone:null,weather:{icon:'🌫️',condition:'Kühl & nebelig',tempHigh:20,tempLow:12,humidity:'80%',uv:'5 (Mittel)',tip:'Monterey ist im Juli oft nebelig und kühl — warme Jacke! Auf Highway 1 kann Nebel die Sicht einschränken.'},bookings:[],highlights:[{name:'Highway 1 / Big Sur',tipIcon:'🛤️',desc:'Bixby Bridge, Big Sur — atemberaubende Küstenstraße',bestTime:'Tagsüber, mehrere Stopps',navAddress:'Bixby Bridge, Big Sur, CA'},{name:'Monterey Bay Aquarium',tipIcon:'🦦',desc:'Eines der besten Aquarien der Welt — Seeotter!',bestTime:'Vormittags',url:'https://www.montereybayaquarium.org',urlLabel:'Tickets & Info',navAddress:'Monterey Bay Aquarium, Monterey, CA'},{name:'17-Mile Drive',tipIcon:'🌲',desc:'Privatstraße durch Pebble Beach — Lone Cypress',bestTime:'Nachmittags',navAddress:'17-Mile Drive, Pebble Beach, CA'}],nextDistance:190,nextTime:'ca. 2 – 2,5 Std.',nextTo:'San Francisco'},
+  {city:'San Francisco',subtitle:'Die Stadt an der Bucht',dates:'28.07. – 01.08.2026',nights:4,hotel:'Hotel Caza / Four Seasons',icon:'🌉',address:'Hotel Caza, 222 Mason St, San Francisco, CA 94102',routeFrom:'Monterey',warning:null,timezone:null,weather:{icon:'🌫️',condition:'Nebelig bis mild',tempHigh:22,tempLow:13,humidity:'75%',uv:'6 (Mittel)',tip:'Karl the Fog! SF ist Ende Juli oft nebelig und kühl. Schichten — auf der Golden Gate Bridge windig und kalt.'},bookings:[{title:'Alcatraz Nachttour',icon:'🏚️',price:null,details:['Do. 30.07.2026 um 17:45 Uhr','Dauer: 3 Stunden','4 Erwachsene','Buchung: GYG32L552GZQ'],bookingWarning:'Am selben Tag Mietwagen am SFO abgeben — Puffer einplanen!'},{title:'Mietwagen-Rückgabe',icon:'🚗',price:null,details:['Rückgabe: 30.07.2026, 17:00 Uhr','SFO Airport','Best.: 2116424053'],bookingWarning:'Noch 2 Nächte ohne Auto — fußläufig / Uber!'}],highlights:[{name:'Alcatraz Nachttour',tipIcon:'🏚️',desc:'Abendtour auf die Gefängnisinsel — Fähre ab Pier 33',bestTime:'30.07., Fähre 17:45 Uhr (gebucht)',navAddress:'Pier 33, Alcatraz Landing, San Francisco, CA'},{name:'Golden Gate Bridge',tipIcon:'🌉',desc:'DAS Wahrzeichen — zu Fuß ca. 30 Min',bestTime:'Vormittags bei klarer Sicht',navAddress:'Golden Gate Bridge Welcome Center, San Francisco, CA'},{name:"Fisherman's Wharf",tipIcon:'🦁',desc:'Seelöwen am Pier 39, Clam Chowder',bestTime:'Mittags',navAddress:"Fisherman's Wharf, San Francisco, CA"},{name:'Cable Cars & Lombard Street',tipIcon:'🚋',desc:'Legendäre Straßenbahn & krummste Straße',bestTime:'Vormittags',navAddress:'Lombard Street, San Francisco, CA'},{name:'Chinatown',tipIcon:'🏮',desc:'Ältestes Chinatown Nordamerikas',bestTime:'Abends für Dim Sum',navAddress:'Chinatown, San Francisco, CA'}],nextDistance:null,nextTime:null,nextTo:null}
+];
+
+var HEADER_COLORS = [['#1e3a5f','#2563eb'],['#065f46','#10b981'],['#92400e','#f59e0b'],['#7c2d12','#ea580c'],['#581c87','#a855f7'],['#7f1d1d','#ef4444'],['#1e40af','#818cf8'],['#0e7490','#22d3ee'],['#4a044e','#d946ef'],['#166534','#4ade80'],['#1e3a5f','#06b6d4'],['#7c3aed','#2563eb']];
+
+// ===== DOC CLASSIFICATION =====
+function classifyDoc(filename){
+  var n = filename.toLowerCase();
+  if(n.indexOf('hotel')>-1||n.indexOf('lodge')>-1||n.indexOf('resort')>-1||n.indexOf('inn')>-1||n.indexOf('hyatt')>-1||n.indexOf('venetian')>-1) return {cat:'Hotelbuchung',icon:'🏨',color:'#2563eb'};
+  if(n.indexOf('esta')>-1) return {cat:'ESTA',icon:'📋',color:'#7c3aed'};
+  if(n.indexOf('flug')>-1||n.indexOf('flight')>-1||n.indexOf('boarding')>-1||n.indexOf('ticket_air')>-1||n.indexOf('lufthansa')>-1||n.indexOf('united')>-1) return {cat:'Flugticket',icon:'✈️',color:'#0e7490'};
+  if(n.indexOf('mietwagen')>-1||n.indexOf('rental')>-1||n.indexOf('enterprise')>-1||n.indexOf('hertz')>-1||n.indexOf('car')>-1||n.indexOf('avis')>-1) return {cat:'Mietwagen',icon:'🚗',color:'#ea580c'};
+  if(n.indexOf('pass')>-1||n.indexOf('passport')>-1||n.indexOf('ausweis')>-1||n.indexOf('perso')>-1) return {cat:'Reisepass/Ausweis',icon:'🛂',color:'#92400e'};
+  if(n.indexOf('versicher')>-1||n.indexOf('insurance')>-1||n.indexOf('krank')>-1) return {cat:'Versicherung',icon:'🛡️',color:'#16a34a'};
+  if(n.indexOf('ticket')>-1||n.indexOf('alcatraz')>-1||n.indexOf('konzert')>-1||n.indexOf('concert')>-1||n.indexOf('sheeran')>-1||n.indexOf('tour')>-1||n.indexOf('eintritt')>-1) return {cat:'Eintrittskarte',icon:'🎟️',color:'#d946ef'};
+  return {cat:'Sonstiges',icon:'📄',color:'#64748b'};
+}
+
+// Erkennt anhand des Dateinamens, zu welcher Station ein Dokument gehört. -1 = keine Zuordnung
+function detectStation(filename){
+  var n = filename.toLowerCase();
+  var map = [
+    {idx:6, keys:['sheeran','allegiant','konzert','concert','vegas','venetian','wynn']},
+    {idx:4, keys:['bootstour','boat','lake powell','powell','antelope','horseshoe','page','hyatt place']},
+    {idx:11, keys:['alcatraz','caza','golden gate','lombard','chinatown','fisherman']},
+    {idx:1, keys:['yosemite','rush creek','glacier','half dome']},
+    {idx:2, keys:['death valley','badwater','zabriskie','the ranch']},
+    {idx:3, keys:['bryce','hoodoo','navajo loop']},
+    {idx:5, keys:['grand canyon','yavapai','mather']},
+    {idx:7, keys:['san diego','manchester','la jolla','balboa','gaslamp']},
+    {idx:8, keys:['los angeles','loews','santa monica','venice']},
+    {idx:9, keys:['santa barbara','harbor view','stearns','funk zone']},
+    {idx:10, keys:['monterey','big sur','cannery','17-mile','aquarium','pebble']},
+    {idx:0, keys:['enterprise','mietwagen','rental','sfo','flug','flight','boarding']}
+  ];
+  for(var i=0;i<map.length;i++){
+    for(var j=0;j<map[i].keys.length;j++){
+      if(n.indexOf(map[i].keys[j])>-1) return map[i].idx;
+    }
+  }
+  return -1;
+}
+
+// ===== NAVIGATION =====
+function go(idx){
+  var cur=document.getElementById('p-'+current);
+  if(cur) cur.style.display='none';
+  current=idx;
+  document.getElementById('p-'+current).style.display='';
+  var btns=document.querySelectorAll('.quick-bar button');
+  for(var i=0;i<btns.length;i++){
+    var cls = (i===idx)?'active':'';
+    if(doneStations[i]) cls += ' done';
+    btns[i].className=cls.trim();
+  }
+  window.scrollTo(0,0);
+}
+
+function toggleDarkMode(){
+  darkMode=!darkMode;
+  localStorage.setItem('darkMode',darkMode);
+  document.body.classList.toggle('dark-mode');
+  document.getElementById('darkBtn').textContent = darkMode ? '☀️' : '🌙';
+}
+
+function markDone(idx){
+  doneStations[idx] = !doneStations[idx];
+  localStorage.setItem('rt_done',JSON.stringify(doneStations));
+  renderStations(); go(idx); renderStats();
+}
+
+// ===== CURRENCY =====
+function openConverter(){ document.getElementById('convModal').classList.add('open'); }
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+function convFromEur(){
+  var v=parseFloat(document.getElementById('eurInput').value)||0;
+  document.getElementById('usdInput').value = (v*rate).toFixed(2);
+}
+function convFromUsd(){
+  var v=parseFloat(document.getElementById('usdInput').value)||0;
+  document.getElementById('eurInput').value = (v/rate).toFixed(2);
+}
+var swapped=false;
+function swapConv(){
+  var e=document.getElementById('eurInput').value;
+  document.getElementById('eurInput').value=document.getElementById('usdInput').value;
+  document.getElementById('usdInput').value=e;
+}
+function loadRate(){
+  try{
+    var xhr=new XMLHttpRequest();
+    xhr.open('GET','https://api.exchangerate.host/latest?base=EUR&symbols=USD',true);
+    xhr.timeout=4000;
+    xhr.onreadystatechange=function(){
+      if(xhr.readyState===4){
+        try{
+          var data=JSON.parse(xhr.responseText);
+          if(data&&data.rates&&data.rates.USD){
+            rate=data.rates.USD;
+            document.getElementById('rateInfo').textContent='Aktueller Kurs: 1 € = '+rate.toFixed(4)+' $ (live)';
+          }else{ fallbackRate(); }
+        }catch(e){ fallbackRate(); }
+      }
+    };
+    xhr.ontimeout=fallbackRate;
+    xhr.onerror=fallbackRate;
+    xhr.send();
+  }catch(e){ fallbackRate(); }
+}
+function fallbackRate(){
+  rate=FALLBACK_RATE;
+  document.getElementById('rateInfo').textContent='Fester Kurs: 1 € = '+rate.toFixed(2)+' $ (offline)';
+}
+
+// ===== DRIVE =====
+function getDriveUrl(){ return localStorage.getItem('rt_drive') || DRIVE_URL || ''; }
+function openDrive(){
+  // Öffnet direkt den gespeicherten Ordner; wenn keiner gesetzt ist, Dialog zeigen
+  var url=getDriveUrl();
+  if(!url){ setDrive(); return; }
+  openSavedDrive();
+}
+function setDrive(){
+  document.getElementById('driveInput').value=getDriveUrl();
+  document.getElementById('driveStatus').textContent='';
+  document.getElementById('driveModal').classList.add('open');
+}
+function saveDrive(){
+  var v=document.getElementById('driveInput').value.trim();
+  localStorage.setItem('rt_drive', v);
+  document.getElementById('driveStatus').textContent = v ? '✓ Gespeichert' : 'Ordner-URL geleert';
+}
+function openSavedDrive(){
+  var url=document.getElementById('driveInput') && document.getElementById('driveModal').classList.contains('open')
+    ? (document.getElementById('driveInput').value.trim() || getDriveUrl())
+    : getDriveUrl();
+  if(!url){ setDrive(); return; }
+  // erst speichern, dann öffnen
+  localStorage.setItem('rt_drive', url);
+  var a=document.createElement('a');
+  a.href=url; a.target='_blank'; a.rel='noopener';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+
+// ===== EMERGENCY =====
+function openEmergency(){ document.getElementById('emModal').classList.add('open'); }
+
+// ===== NOTES =====
+function saveNote(idx){
+  var val=document.getElementById('note-'+idx).value;
+  notes[idx]=val;
+  localStorage.setItem('rt_notes',JSON.stringify(notes));
+  var s=document.getElementById('note-saved-'+idx);
+  s.textContent='✓ Gespeichert';
+  setTimeout(function(){ s.textContent=''; },1500);
+}
+
+// ===== DOCUMENTS =====
+function dzOver(e,idx){ e.preventDefault(); document.getElementById('dz-'+idx).classList.add('active'); }
+function dzLeave(e,idx){ document.getElementById('dz-'+idx).classList.remove('active'); }
+function dzDrop(e,idx){ e.preventDefault(); document.getElementById('dz-'+idx).classList.remove('active'); handleFiles(e.dataTransfer.files,idx); }
+function dzInput(e,idx){ handleFiles(e.target.files,idx); }
+function handleFiles(files,idx){
+  var count=0, total=files.length, moved=0, lastTarget=idx;
+  for(var i=0;i<files.length;i++){
+    (function(file){
+      var info=classifyDoc(file.name);
+      var det=detectStation(file.name);
+      var target = (det>-1) ? det : idx;   // Smart-Zuordnung nach Dateiname
+      if(det>-1 && det!==idx) moved++;
+      lastTarget=target;
+      if(!docs[target]) docs[target]=[];
+      var reader=new FileReader();
+      reader.onload=function(ev){
+        docs[target].push({name:file.name,cat:info.cat,icon:info.icon,color:info.color,size:(file.size/1024/1024).toFixed(2)+' MB',type:file.type||'',data:ev.target.result});
+        count++;
+        if(count===total){
+          try{ localStorage.setItem('rt_docs',JSON.stringify(docs)); }
+          catch(err){ alert('Speicher voll — Dokumente werden nur in dieser Sitzung gehalten. Für viele/große Dateien bitte den Drive-Ordner nutzen.'); }
+          if(moved>0){ alert(moved+' Dokument(e) wurden automatisch der passenden Station zugeordnet.'); }
+          renderStations(); go(lastTarget);
+        }
+      };
+      reader.onerror=function(){ count++; if(count===total){ renderStations(); go(lastTarget); } };
+      reader.readAsDataURL(file);
+    })(files[i]);
+  }
+}
+function showInViewer(d){
+  document.getElementById('docTitle').textContent=(d.icon?d.icon+' ':'')+d.name;
+  var view=document.getElementById('docView');
+  var dl=document.getElementById('docDownload');
+  var src = d.url ? d.url : (d.data||'');   // verlinkte Datei ODER eingebettete Daten
+  var type = d.type || '';
+  var isImg = (type.indexOf('image')>-1) || src.indexOf('image/')>-1 || /\.(png|jpe?g|gif|webp|heic)$/i.test(src);
+  var isPdf = (type.indexOf('pdf')>-1) || src.indexOf('application/pdf')>-1 || /\.pdf$/i.test(src);
+  dl.href=src; dl.download=d.name;
+  if(isImg){
+    view.innerHTML='<img src="'+src+'" style="max-width:100%;border-radius:8px;display:block">';
+  } else if(isPdf){
+    view.innerHTML='<iframe src="'+src+'" style="width:100%;height:65vh;border:1px solid var(--border);border-radius:8px"></iframe>'
+      +'<p style="font-size:12px;color:var(--text-secondary);margin-top:8px">Falls die PDF-Vorschau leer bleibt, bitte unten herunterladen.</p>';
+  } else {
+    view.innerHTML='<p style="color:var(--text-secondary);font-size:14px">Für diesen Dateityp ('+(type||'unbekannt')+') gibt es keine Vorschau. Bitte herunterladen.</p>';
+  }
+  document.getElementById('docModal').classList.add('open');
+}
+function viewShared(idx,sd){ showInViewer(SHARED_DOCS[idx][sd]); }
+function openAllDocs(){
+  var html='', total=0;
+  for(var i=0;i<STOPS.length;i++){
+    var sdocs=SHARED_DOCS[i]||[];
+    var slinks=SHARED_LINKS[i]||[];
+    var mine=docs[i]||[];
+    var mylinks=links[i]||[];
+    if(sdocs.length+slinks.length+mine.length+mylinks.length===0) continue;
+    html+='<div style="margin-top:16px;font-weight:700;font-size:14px;border-top:1px solid var(--border);padding-top:10px">'+STOPS[i].icon+' '+STOPS[i].city+'</div>';
+    for(var d=0;d<sdocs.length;d++){
+      var info=classifyDoc(sdocs[d].name); total++;
+      html+='<div class="doc-item"><span style="font-size:20px">'+info.icon+'</span><div class="doc-meta"><div class="doc-name">'+sdocs[d].name+'</div></div><button class="icon-btn" onclick="closeModal(\'allDocsModal\');viewShared('+i+','+d+')" title="Öffnen">👁️</button></div>';
+    }
+    for(var l=0;l<slinks.length;l++){
+      var li=classifyDoc(slinks[l].name); total++;
+      html+='<div class="doc-item"><span style="font-size:20px">'+li.icon+'</span><div class="doc-meta"><div class="doc-name">'+slinks[l].name+'</div></div><button class="icon-btn" onclick="openLink(\''+slinks[l].url.replace(/'/g,"\\'")+'\')" title="Öffnen">↗️</button></div>';
+    }
+    for(var m2=0;m2<mine.length;m2++){
+      total++;
+      html+='<div class="doc-item"><span style="font-size:20px">'+mine[m2].icon+'</span><div class="doc-meta"><div class="doc-name">'+mine[m2].name+' <span style="font-size:11px;color:var(--text-secondary)">(lokal)</span></div></div><button class="icon-btn" onclick="closeModal(\'allDocsModal\');viewDoc('+i+','+m2+')" title="Öffnen">👁️</button></div>';
+    }
+    for(var ml=0;ml<mylinks.length;ml++){
+      total++;
+      html+='<div class="doc-item"><span style="font-size:20px">'+mylinks[ml].icon+'</span><div class="doc-meta"><div class="doc-name">'+mylinks[ml].name+' <span style="font-size:11px;color:var(--text-secondary)">(lokal)</span></div></div><button class="icon-btn" onclick="openLink(\''+mylinks[ml].url.replace(/'/g,"\\'")+'\')" title="Öffnen">↗️</button></div>';
+    }
+  }
+  if(!html) html='<p style="color:var(--text-secondary)">Noch keine Dokumente.</p>';
+  document.getElementById('allDocsTitle').textContent='📎 Alle Dokumente ('+total+')';
+  document.getElementById('allDocsList').innerHTML=html;
+  document.getElementById('allDocsModal').classList.add('open');
+}
+function viewDoc(idx,di){
+  var d=docs[idx][di];
+  document.getElementById('docTitle').textContent=d.icon+' '+d.name;
+  var view=document.getElementById('docView');
+  var dl=document.getElementById('docDownload');
+  dl.href=d.data; dl.download=d.name;
+  var data=d.data||'';
+  if(data.indexOf('image/')>-1){
+    view.innerHTML='<img src="'+data+'" style="max-width:100%;border-radius:8px;display:block">';
+  } else if(data.indexOf('application/pdf')>-1){
+    view.innerHTML='<iframe src="'+data+'" style="width:100%;height:65vh;border:1px solid var(--border);border-radius:8px"></iframe>'
+      +'<p style="font-size:12px;color:var(--text-secondary);margin-top:8px">Falls die PDF-Vorschau leer bleibt, bitte unten herunterladen.</p>';
+  } else {
+    view.innerHTML='<p style="color:var(--text-secondary);font-size:14px">Für diesen Dateityp ('+(d.type||'unbekannt')+') gibt es keine Vorschau. Bitte herunterladen.</p>';
+  }
+  document.getElementById('docModal').classList.add('open');
+}
+function moveDoc(fromIdx, di, toIdx){
+  toIdx=parseInt(toIdx,10);
+  if(toIdx===fromIdx) return;
+  if(!docs[toIdx]) docs[toIdx]=[];
+  var d=docs[fromIdx].splice(di,1)[0];
+  docs[toIdx].push(d);
+  try{ localStorage.setItem('rt_docs',JSON.stringify(docs)); }catch(e){}
+  renderStations(); go(fromIdx);
+}
+function deleteDoc(idx,di){
+  docs[idx].splice(di,1);
+  localStorage.setItem('rt_docs',JSON.stringify(docs));
+  renderStations(); go(idx);
+}
+
+// ===== DRIVE-LINKS PRO STATION =====
+function addLink(idx){
+  var urlEl=document.getElementById('lk-url-'+idx);
+  var nameEl=document.getElementById('lk-name-'+idx);
+  var url=urlEl.value.trim();
+  if(!url){ urlEl.focus(); return; }
+  if(url.indexOf('http')!==0) url='https://'+url;
+  var name=nameEl.value.trim();
+  if(!name){
+    // Name aus URL ableiten
+    name=decodeURIComponent(url.split('/').pop().split('?')[0]) || 'Drive-Dokument';
+  }
+  var info=classifyDoc(name);
+  var det=detectStation(name);
+  var target=(det>-1)?det:idx;
+  if(!links[target]) links[target]=[];
+  links[target].push({name:name,url:url,cat:info.cat,icon:info.icon,color:info.color});
+  try{ localStorage.setItem('rt_links',JSON.stringify(links)); }catch(e){}
+  urlEl.value=''; nameEl.value='';
+  renderStations(); go(target);
+  if(det>-1 && det!==idx){
+    var s=document.getElementById('lk-status-'+target);
+    if(s){ s.textContent='✓ Automatisch '+STOPS[target].city+' zugeordnet'; setTimeout(function(){s.textContent='';},2500); }
+  }
+}
+function openLink(url){
+  var a=document.createElement('a');
+  a.href=url; a.target='_blank'; a.rel='noopener';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+function moveLink(fromIdx,li,toIdx){
+  toIdx=parseInt(toIdx,10);
+  if(toIdx===fromIdx) return;
+  if(!links[toIdx]) links[toIdx]=[];
+  var l=links[fromIdx].splice(li,1)[0];
+  links[toIdx].push(l);
+  try{ localStorage.setItem('rt_links',JSON.stringify(links)); }catch(e){}
+  renderStations(); go(fromIdx);
+}
+function deleteLink(idx,li){
+  links[idx].splice(li,1);
+  localStorage.setItem('rt_links',JSON.stringify(links));
+  renderStations(); go(idx);
+}
+
+// ===== SEARCH =====
+function doSearch(){
+  var q=document.getElementById('searchInput').value.toLowerCase();
+  var btns=document.querySelectorAll('.quick-bar button');
+  if(!q){ for(var i=0;i<btns.length;i++){ btns[i].style.opacity='1'; } return; }
+  for(var i=0;i<STOPS.length;i++){
+    var s=STOPS[i];
+    var blob=(s.city+' '+s.subtitle+' '+(s.hotel||'')+' '+JSON.stringify(s.highlights)+' '+JSON.stringify(s.bookings)).toLowerCase();
+    btns[i].style.opacity = blob.indexOf(q)>-1 ? '1' : '0.25';
+  }
+}
+
+// ===== RENDER =====
+function renderStats(){
+  var totalNights=0, totalKm=0, doneCount=0, docCount=0;
+  for(var i=0;i<STOPS.length;i++){
+    totalNights+=STOPS[i].nights;
+    if(STOPS[i].nextDistance) totalKm+=STOPS[i].nextDistance;
+    if(doneStations[i]) doneCount++;
+    if(docs[i]) docCount+=docs[i].length;
+  }
+  var html='';
+  html+='<div class="stat"><div class="num">'+STOPS.length+'</div><div class="lbl">Stationen</div></div>';
+  html+='<div class="stat"><div class="num">'+totalNights+'</div><div class="lbl">Nächte</div></div>';
+  html+='<div class="stat"><div class="num">'+totalKm+'</div><div class="lbl">km gesamt</div></div>';
+  html+='<div class="stat"><div class="num">'+docCount+'</div><div class="lbl">Dokumente</div></div>';
+  document.getElementById('stats').innerHTML=html;
+}
+
+function renderCountdown(){
+  var start=new Date(TRIP_START), now=new Date();
+  var diff=Math.ceil((start-now)/(1000*60*60*24));
+  var txt;
+  if(diff>0) txt='Noch '+diff+' Tage bis zur Reise! 🎉';
+  else if(diff>-25) txt='Die Reise läuft — viel Spaß! 🌴';
+  else txt='Was für eine Reise! 📸';
+  document.getElementById('countdown').textContent=txt;
+}
+
+function renderQuickBar(){
+  var bar=document.getElementById('quickBar');
+  bar.innerHTML='';
+  for(var i=0;i<STOPS.length;i++){
+    var btn=document.createElement('button');
+    btn.textContent=STOPS[i].icon;
+    btn.title=STOPS[i].city;
+    btn.onclick=(function(idx){return function(){go(idx);};})(i);
+    var cls=(i===0)?'active':'';
+    if(doneStations[i]) cls+=' done';
+    btn.className=cls.trim();
+    bar.appendChild(btn);
+  }
+}
+
+function renderStations(){
+  var main=document.getElementById('mainContent');
+  main.innerHTML='';
+  for(var i=0;i<STOPS.length;i++){
+    var stop=STOPS[i];
+    var card=document.createElement('div');
+    card.id='p-'+i;
+    card.style.display='none';
+    card.className='station-card';
+    var c=HEADER_COLORS[i];
+
+    var h='<div class="station-header" style="background:linear-gradient(135deg,'+c[0]+' 0%,'+c[1]+' 100%)">';
+    if(doneStations[i]) h+='<div class="done-badge">✓ erledigt</div>';
+    h+='<div class="station-title">'+stop.icon+' '+stop.city+'</div>';
+    h+='<div class="station-subtitle">'+stop.subtitle+'</div></div>';
+
+    h+='<div class="station-body">';
+
+    // Route von Vorgänger
+    if(stop.routeFrom){
+      h+='<div class="route-box"><div class="rt-title">🧭 Anfahrt von '+stop.routeFrom+'</div>';
+      h+='<div style="font-size:13px;color:var(--text-secondary)">'+prevDistanceText(i)+'</div>';
+      h+='<a class="route-btn" target="_blank" href="https://www.google.com/maps/dir/?api=1&origin='+encodeURIComponent(stop.routeFrom)+'&destination='+encodeURIComponent(stop.city)+'">🚗 Route in Google Maps öffnen</a>';
+      h+='</div>';
+    }
+
+    h+='<div class="info-row"><strong>Daten</strong><span>'+stop.dates+'</span></div>';
+    if(stop.nights>0) h+='<div class="info-row"><strong>Nächte</strong><span>'+stop.nights+'</span></div>';
+    if(stop.hotel) h+='<div class="info-row"><strong>Hotel</strong><span>'+stop.hotel+'</span></div>';
+    if(stop.address) h+='<div class="info-row"><strong>Adresse</strong><a href="https://maps.google.com/?q='+encodeURIComponent(stop.address)+'" target="_blank" style="color:var(--accent);text-decoration:none">📍 Karte</a></div>';
+    if(stop.arrival) h+='<div class="info-row"><strong>Ankunft</strong><span style="text-align:right">'+stop.arrival+'</span></div>';
+    if(stop.warning) h+='<div class="warning-banner">⚠️ '+stop.warning+'</div>';
+    if(stop.timezone) h+='<div class="timezone-banner">🕐 '+stop.timezone+'</div>';
+
+    // Weather
+    if(stop.weather){
+      var w=stop.weather;
+      h+='<div class="weather-box"><div class="weather-top"><span style="font-size:32px">'+w.icon+'</span><div><div class="weather-temp">'+w.tempHigh+'°<span style="font-size:16px;color:var(--text-secondary)"> / '+w.tempLow+'°</span></div><div style="font-size:13px;color:var(--text-secondary)">'+w.condition+'</div></div></div>';
+      h+='<div class="weather-grid"><div>💧 Luftfeuchte: '+w.humidity+'</div><div>☀️ UV: '+w.uv+'</div></div>';
+      h+='<div class="weather-tip">💡 '+w.tip+'</div></div>';
+    }
+
+    // Bookings
+    if(stop.bookings&&stop.bookings.length>0){
+      h+='<div class="collapsible" onclick="this.classList.toggle(\'open\')">📋 Buchungen ('+stop.bookings.length+')</div><div class="collapsible-content">';
+      for(var j=0;j<stop.bookings.length;j++){
+        var bk=stop.bookings[j];
+        h+='<div class="booking-item"><div class="booking-title">'+bk.icon+' '+bk.title+'</div>';
+        if(bk.price) h+='<div style="font-size:13px;font-weight:700;color:var(--accent);margin:4px 0">'+bk.price+'</div>';
+        for(var k=0;k<bk.details.length;k++) h+='<div class="booking-detail">'+bk.details[k]+'</div>';
+        if(bk.extras) h+='<div style="font-size:12px;color:var(--text-secondary);margin-top:6px">'+bk.extras+'</div>';
+        if(bk.bookingWarning) h+='<div style="font-size:12px;background:#fef3c7;color:#78350f;padding:8px;margin-top:8px;border-radius:6px">⚠️ '+bk.bookingWarning+'</div>';
+        h+='</div>';
+      }
+      h+='</div>';
+    }
+
+    // Highlights
+    if(stop.highlights&&stop.highlights.length>0){
+      h+='<div class="collapsible" onclick="this.classList.toggle(\'open\')">⭐ Highlights ('+stop.highlights.length+')</div><div class="collapsible-content">';
+      for(var j=0;j<stop.highlights.length;j++){
+        var hl=stop.highlights[j];
+        h+='<div class="highlight-item"><div class="highlight-name">'+hl.tipIcon+' '+hl.name+'</div><div class="highlight-desc">'+hl.desc+'</div>';
+        if(hl.bestTime) h+='<div style="font-size:12px;color:var(--text-secondary)">🕐 '+hl.bestTime+'</div>';
+        if(hl.url) h+='<a href="'+hl.url+'" target="_blank" class="chip-link">'+hl.urlLabel+'</a>';
+        if(hl.navAddress) h+='<a href="https://maps.google.com/?q='+encodeURIComponent(hl.navAddress)+'" target="_blank" class="chip-link nav">📍 Navigieren</a>';
+        h+='</div>';
+      }
+      h+='</div>';
+    }
+
+    // Documents
+    var sharedArr = SHARED_LINKS[i] || [];
+    var sharedDocsArr = SHARED_DOCS[i] || [];
+    var dcount = (docs[i] ? docs[i].length : 0) + (links[i] ? links[i].length : 0) + sharedArr.length + sharedDocsArr.length;
+    h+='<div class="collapsible" onclick="this.classList.toggle(\'open\')">📎 Dokumente ('+dcount+')</div><div class="collapsible-content">';
+
+    // --- fest eingebettete Dokumente (für alle sichtbar) ---
+    if(sharedDocsArr.length>0){
+      for(var sd=0;sd<sharedDocsArr.length;sd++){
+        var sdoc=sharedDocsArr[sd];
+        var sdinfo=classifyDoc(sdoc.name);
+        h+='<div class="doc-item"><span style="font-size:22px">'+sdinfo.icon+'</span><div class="doc-meta"><div class="doc-name">'+sdoc.name+'</div><div class="doc-sub"><span class="doc-cat" style="background:'+sdinfo.color+'">'+sdinfo.cat+'</span> <span style="background:#16a34a;color:#fff;font-size:11px;padding:2px 8px;border-radius:12px">🌐 geteilt</span></div></div>';
+        h+='<button class="icon-btn" onclick="viewShared('+i+','+sd+')" title="Öffnen">👁️</button></div>';
+      }
+    }
+
+    // --- geteilte Drive-Links (fest im Code, für alle sichtbar) ---
+    if(sharedArr.length>0){
+      for(var sx=0;sx<sharedArr.length;sx++){
+        var sl=sharedArr[sx];
+        var sinfo=classifyDoc(sl.name);
+        h+='<div class="doc-item"><span style="font-size:22px">'+sinfo.icon+'</span><div class="doc-meta"><div class="doc-name">'+sl.name+'</div><div class="doc-sub"><span class="doc-cat" style="background:'+sinfo.color+'">'+sinfo.cat+'</span> <span style="background:#16a34a;color:#fff;font-size:11px;padding:2px 8px;border-radius:12px">🌐 geteilt</span></div></div>';
+        h+='<button class="icon-btn" onclick="openLink(\''+sl.url.replace(/'/g,"\\'")+'\')" title="Öffnen">↗️</button></div>';
+      }
+    }
+
+    // --- Drive-Link hinzufügen ---
+    h+='<div style="background:var(--card-bg);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:10px">';
+    h+='<div style="font-weight:700;font-size:13px;margin-bottom:8px">🔗 Eigenen Drive-Link hinzufügen <span style="font-weight:400;color:var(--text-secondary)">(nur auf diesem Gerät)</span></div>';
+    h+='<input id="lk-url-'+i+'" type="text" placeholder="Drive-Freigabe-Link einfügen (https://drive.google.com/...)" style="width:100%;padding:9px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font-size:13px;margin-bottom:6px">';
+    h+='<input id="lk-name-'+i+'" type="text" placeholder="Name (optional, z.B. Ticket Ed Sheeran)" style="width:100%;padding:9px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font-size:13px;margin-bottom:6px">';
+    h+='<button class="chip-link" style="border:none;cursor:pointer" onclick="addLink('+i+')">+ Link hinzufügen</button>';
+    h+='<div id="lk-status-'+i+'" style="font-size:12px;color:#16a34a;height:16px;margin-top:4px"></div>';
+    h+='<div style="font-size:11px;color:var(--text-secondary)">Tipp: Name mit Stichwort (z.B. „Ed Sheeran", „Bootstour") wird automatisch der passenden Station zugeordnet.</div>';
+    h+='</div>';
+
+    // --- vorhandene Links ---
+    if(links[i]){
+      for(var l=0;l<links[i].length;l++){
+        var lk=links[i][l];
+        h+='<div class="doc-item"><span style="font-size:22px">'+lk.icon+'</span><div class="doc-meta"><div class="doc-name">'+lk.name+'</div><div class="doc-sub"><span class="doc-cat" style="background:'+lk.color+'">'+lk.cat+'</span> 🔗 Drive-Link</div>';
+        h+='<select class="doc-move" onchange="moveLink('+i+','+l+',this.value)">';
+        for(var sl=0;sl<STOPS.length;sl++){ h+='<option value="'+sl+'"'+(sl===i?' selected':'')+'>'+STOPS[sl].icon+' '+STOPS[sl].city+'</option>'; }
+        h+='</select></div>';
+        h+='<button class="icon-btn" onclick="openLink(\''+lk.url.replace(/'/g,"\\'")+'\')" title="Öffnen">↗️</button><button class="icon-btn" onclick="deleteLink('+i+','+l+')" title="Löschen">🗑️</button></div>';
+      }
+    }
+
+    // --- Datei-Upload (lokal) ---
+    h+='<div class="dropzone" id="dz-'+i+'" ondragover="dzOver(event,'+i+')" ondragleave="dzLeave(event,'+i+')" ondrop="dzDrop(event,'+i+')" onclick="document.getElementById(\'fi-'+i+'\').click()">';
+    h+='<div class="dz-icon">📤</div><div class="dz-main">Datei hochladen (lokal im Browser)</div><div class="dz-sub">Mehrere möglich · Auto-Erkennung (Hotel, ESTA, Ticket, Pass, Mietwagen...)</div>';
+    h+='<input type="file" id="fi-'+i+'" multiple style="display:none" onchange="dzInput(event,'+i+')"></div>';
+    if(docs[i]){
+      for(var d=0;d<docs[i].length;d++){
+        var doc=docs[i][d];
+        h+='<div class="doc-item"><span style="font-size:22px">'+doc.icon+'</span><div class="doc-meta"><div class="doc-name">'+doc.name+'</div><div class="doc-sub"><span class="doc-cat" style="background:'+doc.color+'">'+doc.cat+'</span> '+doc.size+'</div>';
+        h+='<select class="doc-move" onchange="moveDoc('+i+','+d+',this.value)">';
+        for(var si=0;si<STOPS.length;si++){
+          h+='<option value="'+si+'"'+(si===i?' selected':'')+'>'+STOPS[si].icon+' '+STOPS[si].city+'</option>';
+        }
+        h+='</select></div>';
+        h+='<button class="icon-btn" onclick="viewDoc('+i+','+d+')" title="Öffnen">👁️</button><button class="icon-btn" onclick="deleteDoc('+i+','+d+')" title="Löschen">🗑️</button></div>';
+      }
+    }
+    h+='</div>';
+
+    // Notes
+    h+='<div class="collapsible" onclick="this.classList.toggle(\'open\')">📝 Notizen</div><div class="collapsible-content">';
+    h+='<textarea class="notes" id="note-'+i+'" placeholder="Eigene Notizen zu '+stop.city+'..." oninput="saveNote('+i+')">'+(notes[i]||'')+'</textarea>';
+    h+='<div class="notes-saved" id="note-saved-'+i+'"></div></div>';
+
+    // Next stop
+    if(stop.nextTo){
+      h+='<div style="background:var(--bg);padding:12px;margin-top:14px;border-radius:10px;font-size:13px">⏭️ <strong>Nächste Etappe — '+stop.nextTo+':</strong> '+stop.nextDistance+' km · '+stop.nextTime+'</div>';
+    }
+
+    // Mark done
+    h+='<button class="markdone '+(doneStations[i]?'isdone':'todo')+'" onclick="markDone('+i+')">'+(doneStations[i]?'✓ Als erledigt markiert (rückgängig)':'Station als erledigt markieren')+'</button>';
+
+    // Nav
+    h+='<div class="nav-buttons">';
+    if(i>0) h+='<button onclick="go('+(i-1)+')">← '+STOPS[i-1].city+'</button>';
+    if(i<STOPS.length-1) h+='<button onclick="go('+(i+1)+')">'+STOPS[i+1].city+' →</button>';
+    h+='</div>';
+
+    h+='</div>';
+    card.innerHTML=h;
+    main.appendChild(card);
+  }
+}
+
+// Distanz-Text vom Vorgängerort
+function prevDistanceText(idx){
+  if(idx===0) return 'Start der Reise';
+  var prev=STOPS[idx-1];
+  if(prev.nextDistance) return prev.nextDistance+' km · '+prev.nextTime;
+  return '';
+}
+
+// ===== INIT =====
+function initApp(){
+  if(darkMode){ document.body.classList.add('dark-mode'); document.getElementById('darkBtn').textContent='☀️'; }
+  renderCountdown();
+  renderStats();
+  renderQuickBar();
+  renderStations();
+  go(0);
+  loadRate();
+}
+
+window.addEventListener('load',function(){
+  if(sessionStorage.getItem('loggedIn')==='true'){ initApp(); }
+});
+</script>
+</body>
+</html>
