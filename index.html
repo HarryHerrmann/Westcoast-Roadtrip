@@ -252,6 +252,7 @@
   </div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>
 // ===== AUTH =====
 function hashCode(s){var h=0;for(var i=0;i<s.length;i++){h=((h<<5)-h)+s.charCodeAt(i);h|=0;}return h;}
@@ -510,6 +511,39 @@ function handleFiles(files,idx){
     })(files[i]);
   }
 }
+function pdfFallbackHtml(){
+  return '<div style="text-align:center;padding:24px 8px">'
+    +'<div style="font-size:44px">📄</div>'
+    +'<p style="font-weight:700;margin:10px 0 4px">PDF-Dokument</p>'
+    +'<p style="font-size:13px;color:var(--text-secondary)">Vorschau nicht möglich (evtl. offline). Unten „In neuem Tab öffnen" oder herunterladen.</p>'
+    +'</div>';
+}
+// PDF direkt in der App rendern (kein Verlassen der App nötig)
+function renderPdfInline(url, container){
+  if(typeof pdfjsLib==='undefined'){ container.innerHTML=pdfFallbackHtml(); return; }
+  container.innerHTML='<p style="color:var(--text-secondary);font-size:13px;text-align:center;padding:20px">PDF wird geladen…</p>';
+  var width=container.clientWidth||600;
+  pdfjsLib.getDocument(url).promise.then(function(pdf){
+    container.innerHTML='';
+    var chain=Promise.resolve();
+    for(var p=1;p<=pdf.numPages;p++){
+      (function(pn){
+        chain=chain.then(function(){
+          return pdf.getPage(pn).then(function(page){
+            var base=page.getViewport({scale:1});
+            var vp=page.getViewport({scale:(width/base.width)});
+            var canvas=document.createElement('canvas');
+            canvas.width=vp.width; canvas.height=vp.height;
+            canvas.style.width='100%'; canvas.style.marginBottom='10px'; canvas.style.borderRadius='6px'; canvas.style.border='1px solid var(--border)';
+            container.appendChild(canvas);
+            return page.render({canvasContext:canvas.getContext('2d'),viewport:vp}).promise;
+          });
+        });
+      })(p);
+    }
+    chain.catch(function(){ container.innerHTML=pdfFallbackHtml(); });
+  }).catch(function(){ container.innerHTML=pdfFallbackHtml(); });
+}
 function showInViewer(d){
   document.getElementById('docTitle').textContent=(d.icon?d.icon+' ':'')+d.name;
   var view=document.getElementById('docView');
@@ -521,15 +555,12 @@ function showInViewer(d){
   var isPdf = (type.indexOf('pdf')>-1) || src.indexOf('application/pdf')>-1 || /\.pdf$/i.test(src);
   dl.href=src; dl.download=d.name;
   op.href=src;
+  document.getElementById('docModal').classList.add('open');
   if(isImg){
     view.innerHTML='<img src="'+src+'" alt="'+d.name+'">';
   } else if(isPdf){
-    view.innerHTML='<div style="text-align:center;padding:24px 8px">'
-      +'<div style="font-size:44px">📄</div>'
-      +'<p style="font-weight:700;margin:10px 0 4px">PDF-Dokument</p>'
-      +'<p style="font-size:13px;color:var(--text-secondary);margin:0 0 4px">Zum Ansehen (mit Zoom & Blättern) unten auf<br><b>„In neuem Tab öffnen"</b> tippen.</p>'
-      +'<p style="font-size:12px;color:var(--text-secondary)">Die App bleibt geöffnet – du kommst über den Tab-Zurück-Pfeil des Browsers wieder hierher.</p>'
-      +'</div>';
+    view.innerHTML='<p style="color:var(--text-secondary);font-size:13px;text-align:center;padding:20px">PDF wird geladen…</p>';
+    setTimeout(function(){ renderPdfInline(src, view); }, 60);
   } else {
     view.innerHTML='<p style="color:var(--text-secondary);font-size:14px;padding:16px">Für diesen Dateityp ('+(type||'unbekannt')+') gibt es keine Vorschau. Bitte „In neuem Tab öffnen" oder herunterladen.</p>';
   }
@@ -951,6 +982,7 @@ function loadAllDiaryPhotos(){ for(var i=0;i<STOPS.length;i++) loadDiaryPhotos(i
 
 // ===== INIT =====
 function initApp(){
+  if(typeof pdfjsLib!=='undefined' && pdfjsLib.GlobalWorkerOptions){ pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'; }
   if(darkMode){ document.body.classList.add('dark-mode'); document.getElementById('darkBtn').textContent='☀️'; }
   renderCountdown();
   renderStats();
