@@ -96,6 +96,12 @@
     .chip-link.nav { background: #16a34a; }
     textarea.notes { width: 100%; min-height: 80px; padding: 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--card-bg); color: var(--text); font-family: inherit; font-size: 14px; resize: vertical; }
     .notes-saved { font-size: 12px; color: #16a34a; margin-top: 4px; height: 16px; }
+    /* Tagebuch */
+    .diary-upload { margin-top: 10px; text-align: center; background: var(--accent); color: #fff; padding: 12px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; }
+    .diary-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 8px; margin-top: 10px; }
+    .diary-thumb { position: relative; }
+    .diary-thumb img { width: 100%; height: 90px; object-fit: cover; border-radius: 8px; cursor: pointer; border: 1px solid var(--border); display: block; }
+    .diary-del { position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,.6); color: #fff; border: none; border-radius: 6px; font-size: 12px; padding: 3px 6px; cursor: pointer; }
     /* DROPZONE */
     .dropzone { border: 2px dashed var(--border); border-radius: 12px; padding: 24px; text-align: center; transition: all .2s; cursor: pointer; background: var(--bg); }
     .dropzone.active { border-color: var(--accent); background: rgba(59,130,246,.08); }
@@ -301,6 +307,7 @@ var notes = JSON.parse(localStorage.getItem('rt_notes')||'{}');
 var docs = JSON.parse(localStorage.getItem('rt_docs')||'{}');
 var doneStations = JSON.parse(localStorage.getItem('rt_done')||'{}');
 var links = JSON.parse(localStorage.getItem('rt_links')||'{}');
+var diary = JSON.parse(localStorage.getItem('rt_diary')||'{}');
 
 // ===== DATA =====
 var STOPS = [
@@ -819,6 +826,14 @@ function renderStations(){
     h+='<textarea class="notes" id="note-'+i+'" placeholder="Eigene Notizen zu '+stop.city+'..." oninput="saveNote('+i+')">'+(notes[i]||'')+'</textarea>';
     h+='<div class="notes-saved" id="note-saved-'+i+'"></div></div>';
 
+    // Tagebuch (Text + Fotos, lokal auf dem Gerät)
+    h+='<div class="collapsible" onclick="this.classList.toggle(\'open\')">📔 Tagebuch</div><div class="collapsible-content">';
+    h+='<textarea class="notes" id="diary-'+i+'" placeholder="Was hast du in '+stop.city+' erlebt? Schreib dein Tagebuch..." oninput="saveDiary('+i+')">'+(diary[i]||'')+'</textarea>';
+    h+='<div class="notes-saved" id="diary-saved-'+i+'"></div>';
+    h+='<div class="diary-upload" onclick="document.getElementById(\'diary-file-'+i+'\').click()">📷 Fotos hinzufügen<input type="file" id="diary-file-'+i+'" accept="image/*" multiple style="display:none" onchange="diaryAddPhotos('+i+',this.files)"></div>';
+    h+='<div class="diary-gallery" id="diary-photos-'+i+'"></div>';
+    h+='</div>';
+
     // Next stop
     if(stop.nextTo){
       h+='<div style="background:var(--bg);padding:12px;margin-top:14px;border-radius:10px;font-size:13px">⏭️ <strong>Nächste Etappe — '+stop.nextTo+':</strong> '+stop.nextDistance+' km · '+stop.nextTime+'</div>';
@@ -847,6 +862,93 @@ function prevDistanceText(idx){
   return '';
 }
 
+// ===== TAGEBUCH =====
+function saveDiary(idx){
+  diary[idx]=document.getElementById('diary-'+idx).value;
+  try{ localStorage.setItem('rt_diary',JSON.stringify(diary)); }catch(e){}
+  var st=document.getElementById('diary-saved-'+idx);
+  if(st){ st.textContent='✓ Gespeichert'; setTimeout(function(){ st.textContent=''; },1500); }
+}
+// Fotospeicher (IndexedDB – großer Speicher, bleibt auf dem Gerät)
+var mediaDB=null;
+function openMediaDB(cb){
+  try{
+    var req=indexedDB.open('rt_media',1);
+    req.onupgradeneeded=function(e){
+      var db=e.target.result;
+      if(!db.objectStoreNames.contains('photos')){
+        var storeObj=db.createObjectStore('photos',{keyPath:'id',autoIncrement:true});
+        storeObj.createIndex('station','station',{unique:false});
+      }
+    };
+    req.onsuccess=function(e){ mediaDB=e.target.result; if(cb)cb(); };
+    req.onerror=function(){ if(cb)cb(); };
+  }catch(e){ if(cb)cb(); }
+}
+// Bild vor dem Speichern verkleinern (max 1600px, JPEG) – spart massiv Platz
+function compressImage(file, cb){
+  var reader=new FileReader();
+  reader.onload=function(ev){
+    var img=new Image();
+    img.onload=function(){
+      var max=1600, w=img.width, h=img.height;
+      if(w>max||h>max){ if(w>h){ h=Math.round(h*max/w); w=max; } else { w=Math.round(w*max/h); h=max; } }
+      var c=document.createElement('canvas'); c.width=w; c.height=h;
+      c.getContext('2d').drawImage(img,0,0,w,h);
+      try{ cb(c.toDataURL('image/jpeg',0.75)); }catch(err){ cb(ev.target.result); }
+    };
+    img.onerror=function(){ cb(ev.target.result); };
+    img.src=ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+function diaryAddPhotos(idx, files){
+  if(!mediaDB){ alert('Fotospeicher wird noch geladen – bitte kurz warten und erneut versuchen.'); return; }
+  var arr=Array.prototype.slice.call(files), done=0, total=arr.length;
+  if(total===0) return;
+  arr.forEach(function(file){
+    if(!file.type || file.type.indexOf('image')===-1){ done++; if(done===total) loadDiaryPhotos(idx); return; }
+    compressImage(file, function(dataUrl){
+      try{
+        var tx=mediaDB.transaction('photos','readwrite');
+        tx.objectStore('photos').add({station:idx,name:file.name,ts:Date.now(),data:dataUrl});
+        tx.oncomplete=function(){ done++; if(done===total) loadDiaryPhotos(idx); };
+        tx.onerror=function(){ done++; if(done===total) loadDiaryPhotos(idx); };
+      }catch(e){ done++; if(done===total) loadDiaryPhotos(idx); }
+    });
+  });
+}
+function loadDiaryPhotos(idx){
+  var cont=document.getElementById('diary-photos-'+idx);
+  if(!cont||!mediaDB) return;
+  try{
+    var tx=mediaDB.transaction('photos','readonly');
+    var req=tx.objectStore('photos').index('station').getAll(idx);
+    req.onsuccess=function(){
+      var items=req.result||[];
+      var html='';
+      for(var k=0;k<items.length;k++){
+        html+='<div class="diary-thumb"><img src="'+items[k].data+'" onclick="viewDiaryPhoto('+items[k].id+')"><button class="diary-del" onclick="deleteDiaryPhoto('+items[k].id+','+idx+')">🗑️</button></div>';
+      }
+      cont.innerHTML=html;
+    };
+  }catch(e){}
+}
+function viewDiaryPhoto(id){
+  if(!mediaDB) return;
+  var tx=mediaDB.transaction('photos','readonly');
+  var req=tx.objectStore('photos').get(id);
+  req.onsuccess=function(){ if(req.result) showInViewer({name:req.result.name||'Foto',type:'image/jpeg',data:req.result.data}); };
+}
+function deleteDiaryPhoto(id, idx){
+  if(!mediaDB) return;
+  if(!confirm('Dieses Foto löschen?')) return;
+  var tx=mediaDB.transaction('photos','readwrite');
+  tx.objectStore('photos').delete(id);
+  tx.oncomplete=function(){ loadDiaryPhotos(idx); };
+}
+function loadAllDiaryPhotos(){ for(var i=0;i<STOPS.length;i++) loadDiaryPhotos(i); }
+
 // ===== INIT =====
 function initApp(){
   if(darkMode){ document.body.classList.add('dark-mode'); document.getElementById('darkBtn').textContent='☀️'; }
@@ -856,6 +958,7 @@ function initApp(){
   renderStations();
   go(0);
   loadRate();
+  openMediaDB(loadAllDiaryPhotos);
 }
 
 window.addEventListener('load',function(){
