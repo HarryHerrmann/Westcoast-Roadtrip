@@ -169,6 +169,7 @@
       </div>
       <div class="header-right">
         <button class="hbtn" onclick="openAllDocs()">📎 Dokumente</button>
+        <button class="hbtn" onclick="openAddStop()">➕ Stopp</button>
         <button class="hbtn" onclick="openConverter()">💱 Währung</button>
         <button class="hbtn" style="background:#dc2626" onclick="openEmergency()">🆘 Notfall</button>
         <button class="hbtn drive" onclick="openDrive()">📁 Drive</button>
@@ -233,6 +234,23 @@
     <button class="close-x" onclick="closeModal('allDocsModal')">×</button>
     <h2 id="allDocsTitle">📎 Alle Dokumente</h2>
     <div id="allDocsList"></div>
+  </div>
+</div>
+
+<!-- ZWISCHENSTOPP HINZUFÜGEN MODAL -->
+<div class="modal-overlay" id="addStopModal" onclick="if(event.target===this)closeModal('addStopModal')">
+  <div class="modal">
+    <button class="close-x" onclick="closeModal('addStopModal')">×</button>
+    <h2>➕ Zwischenstopp hinzufügen</h2>
+    <p style="font-size:13px;color:var(--text-secondary);margin-top:0">Für spontane Stopps unterwegs – mit eigenem Tagebuch, Notizen & Fotos. Die bestehenden Stationen bleiben unverändert.</p>
+    <input id="stopName" type="text" placeholder="Name (z.B. Aussichtspunkt am Highway 1)" style="width:100%;padding:12px;border:1px solid var(--border);border-radius:8px;background:var(--card-bg);color:var(--text);font-size:14px;margin-bottom:8px">
+    <input id="stopIcon" type="text" value="📍" placeholder="Emoji (optional)" style="width:100%;padding:12px;border:1px solid var(--border);border-radius:8px;background:var(--card-bg);color:var(--text);font-size:14px;margin-bottom:8px">
+    <label style="font-size:13px;color:var(--text-secondary)">Einfügen nach welcher Station:</label>
+    <select id="stopAfter" style="width:100%;padding:12px;border:1px solid var(--border);border-radius:8px;background:var(--card-bg);color:var(--text);font-size:14px;margin-top:4px"></select>
+    <div style="display:flex;gap:8px;margin-top:14px">
+      <button class="hbtn" style="flex:1;padding:12px" onclick="saveStop()">Hinzufügen</button>
+      <button class="hbtn secondary" style="flex:1;padding:12px" onclick="closeModal('addStopModal')">Abbrechen</button>
+    </div>
   </div>
 </div>
 
@@ -309,6 +327,22 @@ var docs = JSON.parse(localStorage.getItem('rt_docs')||'{}');
 var doneStations = JSON.parse(localStorage.getItem('rt_done')||'{}');
 var links = JSON.parse(localStorage.getItem('rt_links')||'{}');
 var diary = JSON.parse(localStorage.getItem('rt_diary')||'{}');
+var customStops = JSON.parse(localStorage.getItem('rt_custom')||'[]'); // eigene Zwischenstopps
+var ROUTE = []; // effektive Reihenfolge aus Basis-Stationen + eigenen Zwischenstopps
+function buildRoute(){
+  var route=[];
+  for(var bi=0;bi<STOPS.length;bi++) route.push({key:bi, stop:STOPS[bi]});
+  for(var ci=0;ci<customStops.length;ci++){
+    var cs=customStops[ci];
+    var st={city:cs.name,subtitle:'📔 Eigener Zwischenstopp',icon:cs.icon||'📍',dates:'Zwischenstopp',nights:0,hotel:null,address:cs.name,routeFrom:null,arrival:null,warning:null,timezone:null,weather:null,bookings:[],highlights:[],nextDistance:null,nextTime:null,nextTo:null,_custom:true};
+    var pos=-1;
+    for(var r=0;r<route.length;r++){ if(route[r].key===cs.after){ pos=r; break; } }
+    var entry={key:cs.key, stop:st};
+    if(pos===-1) route.push(entry); else route.splice(pos+1,0,entry);
+  }
+  return route;
+}
+function refreshRoute(){ ROUTE=buildRoute(); }
 
 // ===== DATA =====
 var STOPS = [
@@ -371,11 +405,13 @@ function go(idx){
   var cur=document.getElementById('p-'+current);
   if(cur) cur.style.display='none';
   current=idx;
-  document.getElementById('p-'+current).style.display='';
+  var el=document.getElementById('p-'+current);
+  if(el) el.style.display='';
   var btns=document.querySelectorAll('.quick-bar button');
   for(var i=0;i<btns.length;i++){
-    var cls = (i===idx)?'active':'';
-    if(doneStations[i]) cls += ' done';
+    var bk=btns[i].getAttribute('data-key');
+    var cls = (bk===String(idx))?'active':'';
+    if(doneStations[bk]) cls += ' done';
     btns[i].className=cls.trim();
   }
   window.scrollTo(0,0);
@@ -392,6 +428,48 @@ function markDone(idx){
   doneStations[idx] = !doneStations[idx];
   localStorage.setItem('rt_done',JSON.stringify(doneStations));
   renderStations(); go(idx); renderStats();
+}
+
+// ===== EIGENE ZWISCHENSTOPPS =====
+function openAddStop(){
+  refreshRoute();
+  var sel=document.getElementById('stopAfter'), opt='';
+  for(var r=0;r<ROUTE.length;r++){ opt+='<option value="'+ROUTE[r].key+'">'+ROUTE[r].stop.icon+' '+ROUTE[r].stop.city+'</option>'; }
+  sel.innerHTML=opt;
+  document.getElementById('stopName').value='';
+  document.getElementById('stopIcon').value='📍';
+  document.getElementById('addStopModal').classList.add('open');
+}
+function saveStop(){
+  var name=document.getElementById('stopName').value.trim();
+  if(!name){ document.getElementById('stopName').focus(); return; }
+  var icon=document.getElementById('stopIcon').value.trim()||'📍';
+  var after=parseInt(document.getElementById('stopAfter').value,10);
+  var maxk=999;
+  for(var c=0;c<customStops.length;c++){ if(customStops[c].key>maxk) maxk=customStops[c].key; }
+  var key=maxk+1;
+  customStops.push({key:key,name:name,icon:icon,after:after});
+  try{ localStorage.setItem('rt_custom',JSON.stringify(customStops)); }catch(e){}
+  closeModal('addStopModal');
+  refreshRoute(); renderStats(); renderQuickBar(); renderStations(); go(key);
+}
+function deleteStop(key){
+  if(!confirm('Diesen Zwischenstopp inkl. Notizen, Tagebuch & Fotos löschen?')) return;
+  customStops=customStops.filter(function(c){ return c.key!==key; });
+  try{
+    localStorage.setItem('rt_custom',JSON.stringify(customStops));
+    delete notes[key]; delete diary[key]; delete docs[key]; delete links[key]; delete doneStations[key];
+    localStorage.setItem('rt_notes',JSON.stringify(notes));
+    localStorage.setItem('rt_diary',JSON.stringify(diary));
+    localStorage.setItem('rt_docs',JSON.stringify(docs));
+    localStorage.setItem('rt_links',JSON.stringify(links));
+    localStorage.setItem('rt_done',JSON.stringify(doneStations));
+  }catch(e){}
+  if(mediaDB){ try{
+    var idx=mediaDB.transaction('photos','readonly').objectStore('photos').index('station').getAllKeys(key);
+    idx.onsuccess=function(){ var ids=idx.result||[]; if(ids.length){ var tx=mediaDB.transaction('photos','readwrite'); for(var n=0;n<ids.length;n++) tx.objectStore('photos').delete(ids[n]); } };
+  }catch(e){} }
+  refreshRoute(); renderStats(); renderQuickBar(); renderStations(); go(0);
 }
 
 // ===== CURRENCY =====
@@ -569,13 +647,14 @@ function showInViewer(d){
 function viewShared(idx,sd){ showInViewer(SHARED_DOCS[idx][sd]); }
 function openAllDocs(){
   var html='', total=0;
-  for(var i=0;i<STOPS.length;i++){
+  for(var _r=0;_r<ROUTE.length;_r++){
+    var i=ROUTE[_r].key;
     var sdocs=SHARED_DOCS[i]||[];
     var slinks=SHARED_LINKS[i]||[];
     var mine=docs[i]||[];
     var mylinks=links[i]||[];
     if(sdocs.length+slinks.length+mine.length+mylinks.length===0) continue;
-    html+='<div style="margin-top:16px;font-weight:700;font-size:14px;border-top:1px solid var(--border);padding-top:10px">'+STOPS[i].icon+' '+STOPS[i].city+'</div>';
+    html+='<div style="margin-top:16px;font-weight:700;font-size:14px;border-top:1px solid var(--border);padding-top:10px">'+ROUTE[_r].stop.icon+' '+ROUTE[_r].stop.city+'</div>';
     for(var d=0;d<sdocs.length;d++){
       var info=classifyDoc(sdocs[d].name); total++;
       html+='<div class="doc-item"><span style="font-size:20px">'+info.icon+'</span><div class="doc-meta"><div class="doc-name">'+sdocs[d].name+'</div></div><button class="icon-btn" onclick="closeModal(\'allDocsModal\');viewShared('+i+','+d+')" title="Öffnen">👁️</button></div>';
@@ -676,14 +755,15 @@ function doSearch(){
 // ===== RENDER =====
 function renderStats(){
   var totalNights=0, totalKm=0, doneCount=0, docCount=0;
-  for(var i=0;i<STOPS.length;i++){
-    totalNights+=STOPS[i].nights;
-    if(STOPS[i].nextDistance) totalKm+=STOPS[i].nextDistance;
-    if(doneStations[i]) doneCount++;
-    if(docs[i]) docCount+=docs[i].length;
+  for(var r=0;r<ROUTE.length;r++){
+    var key=ROUTE[r].key, st=ROUTE[r].stop;
+    totalNights+=st.nights||0;
+    if(st.nextDistance) totalKm+=st.nextDistance;
+    if(doneStations[key]) doneCount++;
+    if(docs[key]) docCount+=docs[key].length;
   }
   var html='';
-  html+='<div class="stat"><div class="num">'+STOPS.length+'</div><div class="lbl">Stationen</div></div>';
+  html+='<div class="stat"><div class="num">'+ROUTE.length+'</div><div class="lbl">Stationen</div></div>';
   html+='<div class="stat"><div class="num">'+totalNights+'</div><div class="lbl">Nächte</div></div>';
   html+='<div class="stat"><div class="num">'+totalKm+'</div><div class="lbl">km gesamt</div></div>';
   html+='<div class="stat"><div class="num">'+docCount+'</div><div class="lbl">Dokumente</div></div>';
@@ -703,28 +783,33 @@ function renderCountdown(){
 function renderQuickBar(){
   var bar=document.getElementById('quickBar');
   bar.innerHTML='';
-  for(var i=0;i<STOPS.length;i++){
+  for(var r=0;r<ROUTE.length;r++){
+    var key=ROUTE[r].key, st=ROUTE[r].stop;
     var btn=document.createElement('button');
-    btn.textContent=STOPS[i].icon;
-    btn.title=STOPS[i].city;
-    btn.onclick=(function(idx){return function(){go(idx);};})(i);
-    var cls=(i===0)?'active':'';
-    if(doneStations[i]) cls+=' done';
+    btn.textContent=st.icon;
+    btn.title=st.city;
+    btn.setAttribute('data-key', String(key));
+    btn.onclick=(function(k){return function(){go(k);};})(key);
+    var cls=(r===0)?'active':'';
+    if(doneStations[key]) cls+=' done';
     btn.className=cls.trim();
     bar.appendChild(btn);
   }
 }
 
 function renderStations(){
+  refreshRoute();
   var main=document.getElementById('mainContent');
   main.innerHTML='';
-  for(var i=0;i<STOPS.length;i++){
-    var stop=STOPS[i];
+  for(var _r=0;_r<ROUTE.length;_r++){
+    var i=ROUTE[_r].key;
+    var stop=ROUTE[_r].stop;
+    var isCustom=!!stop._custom;
     var card=document.createElement('div');
     card.id='p-'+i;
     card.style.display='none';
     card.className='station-card';
-    var c=HEADER_COLORS[i];
+    var c=HEADER_COLORS[i]||['#4c1d95','#7c3aed'];
 
     var h='<div class="station-header" style="background:linear-gradient(135deg,'+c[0]+' 0%,'+c[1]+' 100%)">';
     if(doneStations[i]) h+='<div class="done-badge">✓ erledigt</div>';
@@ -828,7 +913,7 @@ function renderStations(){
         var lk=links[i][l];
         h+='<div class="doc-item"><span style="font-size:22px">'+lk.icon+'</span><div class="doc-meta"><div class="doc-name">'+lk.name+'</div><div class="doc-sub"><span class="doc-cat" style="background:'+lk.color+'">'+lk.cat+'</span> 🔗 Drive-Link</div>';
         h+='<select class="doc-move" onchange="moveLink('+i+','+l+',this.value)">';
-        for(var sl=0;sl<STOPS.length;sl++){ h+='<option value="'+sl+'"'+(sl===i?' selected':'')+'>'+STOPS[sl].icon+' '+STOPS[sl].city+'</option>'; }
+        for(var so=0;so<ROUTE.length;so++){ var ok=ROUTE[so].key; h+='<option value="'+ok+'"'+(ok===i?' selected':'')+'>'+ROUTE[so].stop.icon+' '+ROUTE[so].stop.city+'</option>'; }
         h+='</select></div>';
         h+='<button class="icon-btn" onclick="openLink(\''+lk.url.replace(/'/g,"\\'")+'\')" title="Öffnen">↗️</button><button class="icon-btn" onclick="deleteLink('+i+','+l+')" title="Löschen">🗑️</button></div>';
       }
@@ -843,9 +928,7 @@ function renderStations(){
         var doc=docs[i][d];
         h+='<div class="doc-item"><span style="font-size:22px">'+doc.icon+'</span><div class="doc-meta"><div class="doc-name">'+doc.name+'</div><div class="doc-sub"><span class="doc-cat" style="background:'+doc.color+'">'+doc.cat+'</span> '+doc.size+'</div>';
         h+='<select class="doc-move" onchange="moveDoc('+i+','+d+',this.value)">';
-        for(var si=0;si<STOPS.length;si++){
-          h+='<option value="'+si+'"'+(si===i?' selected':'')+'>'+STOPS[si].icon+' '+STOPS[si].city+'</option>';
-        }
+        for(var so=0;so<ROUTE.length;so++){ var ok=ROUTE[so].key; h+='<option value="'+ok+'"'+(ok===i?' selected':'')+'>'+ROUTE[so].stop.icon+' '+ROUTE[so].stop.city+'</option>'; }
         h+='</select></div>';
         h+='<button class="icon-btn" onclick="viewDoc('+i+','+d+')" title="Öffnen">👁️</button><button class="icon-btn" onclick="deleteDoc('+i+','+d+')" title="Löschen">🗑️</button></div>';
       }
@@ -870,13 +953,18 @@ function renderStations(){
       h+='<div style="background:var(--bg);padding:12px;margin-top:14px;border-radius:10px;font-size:13px">⏭️ <strong>Nächste Etappe — '+stop.nextTo+':</strong> '+stop.nextDistance+' km · '+stop.nextTime+'</div>';
     }
 
+    // eigenen Zwischenstopp löschen
+    if(isCustom){
+      h+='<button class="markdone" style="background:#dc2626;color:#fff;margin-bottom:8px" onclick="deleteStop('+i+')">🗑️ Diesen Zwischenstopp löschen</button>';
+    }
+
     // Mark done
     h+='<button class="markdone '+(doneStations[i]?'isdone':'todo')+'" onclick="markDone('+i+')">'+(doneStations[i]?'✓ Als erledigt markiert (rückgängig)':'Station als erledigt markieren')+'</button>';
 
-    // Nav
+    // Nav (nach effektiver Reihenfolge)
     h+='<div class="nav-buttons">';
-    if(i>0) h+='<button onclick="go('+(i-1)+')">← '+STOPS[i-1].city+'</button>';
-    if(i<STOPS.length-1) h+='<button onclick="go('+(i+1)+')">'+STOPS[i+1].city+' →</button>';
+    if(_r>0) h+='<button onclick="go('+ROUTE[_r-1].key+')">← '+ROUTE[_r-1].stop.city+'</button>';
+    if(_r<ROUTE.length-1) h+='<button onclick="go('+ROUTE[_r+1].key+')">'+ROUTE[_r+1].stop.city+' →</button>';
     h+='</div>';
 
     h+='</div>';
@@ -978,11 +1066,12 @@ function deleteDiaryPhoto(id, idx){
   tx.objectStore('photos').delete(id);
   tx.oncomplete=function(){ loadDiaryPhotos(idx); };
 }
-function loadAllDiaryPhotos(){ for(var i=0;i<STOPS.length;i++) loadDiaryPhotos(i); }
+function loadAllDiaryPhotos(){ for(var r=0;r<ROUTE.length;r++) loadDiaryPhotos(ROUTE[r].key); }
 
 // ===== INIT =====
 function initApp(){
   if(typeof pdfjsLib!=='undefined' && pdfjsLib.GlobalWorkerOptions){ pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'; }
+  refreshRoute();
   if(darkMode){ document.body.classList.add('dark-mode'); document.getElementById('darkBtn').textContent='☀️'; }
   renderCountdown();
   renderStats();
