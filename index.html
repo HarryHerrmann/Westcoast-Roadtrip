@@ -166,6 +166,7 @@
       <div class="header-left">
         <h1>🚗 Westcoast Roadtrip 2026</h1>
         <div class="sub" id="countdown"></div>
+        <div class="sub" id="homeclock" style="margin-top:2px"></div>
       </div>
       <div class="header-right">
         <button class="hbtn" onclick="openAllDocs()">📎 Dokumente</button>
@@ -780,6 +781,21 @@ function renderCountdown(){
   document.getElementById('countdown').textContent=txt;
 }
 
+// Celsius -> Fahrenheit
+function c2f(c){ return Math.round(c*9/5+32); }
+
+// Uhrzeit im Heimatdorf Mühlau (Deutschland, Zeitzone Europe/Berlin)
+function updateHomeClock(){
+  var el=document.getElementById('homeclock');
+  if(!el) return;
+  try{
+    var t=new Intl.DateTimeFormat('de-DE',{timeZone:'Europe/Berlin',hour:'2-digit',minute:'2-digit'}).format(new Date());
+    el.textContent='🇩🇪 Mühlau: '+t+' Uhr';
+  }catch(e){
+    el.textContent='';
+  }
+}
+
 function renderQuickBar(){
   var bar=document.getElementById('quickBar');
   bar.innerHTML='';
@@ -837,7 +853,7 @@ function renderStations(){
     // Weather
     if(stop.weather){
       var w=stop.weather;
-      h+='<div class="weather-box"><div class="weather-top"><span style="font-size:32px">'+w.icon+'</span><div><div class="weather-temp">'+w.tempHigh+'°<span style="font-size:16px;color:var(--text-secondary)"> / '+w.tempLow+'°</span></div><div style="font-size:13px;color:var(--text-secondary)">'+w.condition+'</div></div></div>';
+      h+='<div class="weather-box"><div class="weather-top"><span style="font-size:32px">'+w.icon+'</span><div><div class="weather-temp">'+w.tempHigh+'°<span style="font-size:16px;color:var(--text-secondary)"> / '+w.tempLow+'° C</span></div><div style="font-size:12px;color:var(--text-secondary)">'+c2f(w.tempHigh)+'° / '+c2f(w.tempLow)+'° F</div><div style="font-size:13px;color:var(--text-secondary);margin-top:2px">'+w.condition+'</div></div></div>';
       h+='<div class="weather-grid"><div>💧 Luftfeuchte: '+w.humidity+'</div><div>☀️ UV: '+w.uv+'</div></div>';
       h+='<div class="weather-tip">💡 '+w.tip+'</div></div>';
     }
@@ -1074,6 +1090,8 @@ function initApp(){
   refreshRoute();
   if(darkMode){ document.body.classList.add('dark-mode'); document.getElementById('darkBtn').textContent='☀️'; }
   renderCountdown();
+  updateHomeClock();
+  setInterval(updateHomeClock, 30000);
   renderStats();
   renderQuickBar();
   renderStations();
