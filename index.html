@@ -144,6 +144,9 @@
     .conv-row { display: flex; gap: 10px; align-items: center; margin: 12px 0; }
     .conv-row input { flex: 1; padding: 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 18px; background: var(--card-bg); color: var(--text); }
     .conv-row .cur { font-weight: 700; width: 50px; }
+    .conv-row.units { gap: 6px; }
+    .conv-row.units input { padding: 10px; font-size: 16px; min-width: 0; }
+    .conv-row.units .cur { width: 34px; font-size: 13px; text-align: center; }
     .rate-info { font-size: 12px; color: var(--text-secondary); text-align: center; margin-top: 8px; }
     .swap-btn { background: var(--accent); color: #fff; border: none; border-radius: 50%; width: 40px; height: 40px; font-size: 18px; cursor: pointer; display: block; margin: 0 auto; }
     .footer { text-align: center; color: var(--text-secondary); font-size: 12px; padding: 20px; }
@@ -209,6 +212,17 @@
     <button class="swap-btn" onclick="swapConv()">⇅</button>
     <div class="conv-row"><input type="number" id="usdInput" placeholder="0" oninput="convFromUsd()"><span class="cur">USD $</span></div>
     <div class="rate-info" id="rateInfo">Kurs wird geladen...</div>
+
+    <h2 style="margin-top:22px">📏 Einheiten (US ↔ metrisch)</h2>
+    <div class="conv-row units"><input type="number" placeholder="0" id="u_mi" oninput="uconv('u_mi','u_km',1.609344,'a')"><span class="cur">mi</span><input type="number" placeholder="0" id="u_km" oninput="uconv('u_mi','u_km',1.609344,'b')"><span class="cur">km</span></div>
+    <div class="conv-row units"><input type="number" placeholder="0" id="u_ft" oninput="uconv('u_ft','u_m',0.3048,'a')"><span class="cur">ft</span><input type="number" placeholder="0" id="u_m" oninput="uconv('u_ft','u_m',0.3048,'b')"><span class="cur">m</span></div>
+    <div class="conv-row units"><input type="number" placeholder="0" id="u_in" oninput="uconv('u_in','u_cm',2.54,'a')"><span class="cur">inch</span><input type="number" placeholder="0" id="u_cm" oninput="uconv('u_in','u_cm',2.54,'b')"><span class="cur">cm</span></div>
+    <div class="conv-row units"><input type="number" placeholder="0" id="u_lb" oninput="uconv('u_lb','u_kg',0.45359237,'a')"><span class="cur">lb</span><input type="number" placeholder="0" id="u_kg" oninput="uconv('u_lb','u_kg',0.45359237,'b')"><span class="cur">kg</span></div>
+    <div class="conv-row units"><input type="number" placeholder="0" id="u_oz" oninput="uconv('u_oz','u_g',28.349523125,'a')"><span class="cur">oz</span><input type="number" placeholder="0" id="u_g" oninput="uconv('u_oz','u_g',28.349523125,'b')"><span class="cur">g</span></div>
+    <div class="conv-row units"><input type="number" placeholder="0" id="u_gal" oninput="uconv('u_gal','u_l',3.785411784,'a')"><span class="cur">gal</span><input type="number" placeholder="0" id="u_l" oninput="uconv('u_gal','u_l',3.785411784,'b')"><span class="cur">L</span></div>
+    <div class="conv-row units"><input type="number" placeholder="0" id="u_floz" oninput="uconv('u_floz','u_ml',29.5735295625,'a')"><span class="cur">fl oz</span><input type="number" placeholder="0" id="u_ml" oninput="uconv('u_floz','u_ml',29.5735295625,'b')"><span class="cur">ml</span></div>
+    <div class="conv-row units"><input type="number" placeholder="0" id="u_f" oninput="tconv('f')"><span class="cur">°F</span><input type="number" placeholder="0" id="u_c" oninput="tconv('c')"><span class="cur">°C</span></div>
+    <div class="rate-info">US-Gallone &amp; fl oz (nicht die brit. Größen). Werte auf 4 Stellen gerundet.</div>
   </div>
 </div>
 
@@ -502,6 +516,19 @@ function deleteStop(key){
 
 // ===== CURRENCY =====
 function openConverter(){ document.getElementById('convModal').classList.add('open'); }
+// Einheiten-Umrechnung: metrisch = US * factor (a = US-Feld, b = metrisches Feld)
+function uRound(x){ return Math.round(x*10000)/10000; }
+function uconv(aId, bId, factor, from){
+  var a=document.getElementById(aId), b=document.getElementById(bId);
+  if(from==='a'){ var v=parseFloat(a.value); b.value = isNaN(v) ? '' : uRound(v*factor); }
+  else { var w=parseFloat(b.value); a.value = isNaN(w) ? '' : uRound(w/factor); }
+}
+// Temperatur (kein einfacher Faktor)
+function tconv(from){
+  var f=document.getElementById('u_f'), c=document.getElementById('u_c');
+  if(from==='f'){ var v=parseFloat(f.value); c.value = isNaN(v) ? '' : Math.round((v-32)*5/9*10)/10; }
+  else { var w=parseFloat(c.value); f.value = isNaN(w) ? '' : Math.round((w*9/5+32)*10)/10; }
+}
 function closeModal(id){ document.getElementById(id).classList.remove('open'); }
 function convFromEur(){
   var v=parseFloat(document.getElementById('eurInput').value)||0;
