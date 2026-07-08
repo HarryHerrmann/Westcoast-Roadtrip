@@ -105,6 +105,13 @@
     .diary-cap { position: absolute; left: 0; right: 0; bottom: 0; background: linear-gradient(transparent, rgba(0,0,0,.75)); color: #fff; font-size: 10px; line-height: 1.2; padding: 10px 5px 4px; border-radius: 0 0 8px 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     a.diary-cap { display: block; cursor: pointer; text-decoration: none; }
     a.diary-cap:hover { background: linear-gradient(transparent, rgba(22,101,52,.9)); }
+    /* Tagebuch – Tage */
+    .diary-day { border: 1px solid var(--border); border-radius: 10px; padding: 12px; margin-bottom: 12px; background: var(--bg); }
+    .diary-day-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+    .diary-day-title { font-weight: 700; font-size: 15px; }
+    .diary-day-del { background: transparent; color: #dc2626; border: 1px solid #dc2626; border-radius: 6px; font-size: 12px; padding: 4px 8px; cursor: pointer; }
+    .diary-day-add { width: 100%; margin-top: 2px; padding: 11px; border: 1.5px dashed var(--accent); background: transparent; color: var(--accent); border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; }
+    .diary-day-add:hover { background: rgba(59,130,246,.08); }
     /* TOAST */
     .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(20px); background: #16a34a; color: #fff; padding: 12px 18px; border-radius: 10px; font-size: 14px; font-weight: 600; box-shadow: 0 6px 20px rgba(0,0,0,.25); opacity: 0; transition: all .3s; z-index: 9999; max-width: 90%; text-align: center; }
     .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
@@ -335,6 +342,18 @@ var docs = JSON.parse(localStorage.getItem('rt_docs')||'{}');
 var doneStations = JSON.parse(localStorage.getItem('rt_done')||'{}');
 var links = JSON.parse(localStorage.getItem('rt_links')||'{}');
 var diary = JSON.parse(localStorage.getItem('rt_diary')||'{}');
+// Tagebuch mit mehreren Tagen pro Station: { stationKey: [ {id, text}, ... ] }
+var diaryDays = JSON.parse(localStorage.getItem('rt_diarydays')||'{}');
+function newDayId(){ return 'd'+Date.now().toString(36)+Math.floor(Math.random()*1e6).toString(36); }
+function saveDiaryDays(){ try{ localStorage.setItem('rt_diarydays',JSON.stringify(diaryDays)); }catch(e){} }
+// Sorgt dafür, dass jede Station mind. einen Tag hat; migriert alten Einzeltext (diary) zu "Tag 1"
+function ensureDays(key){
+  if(!diaryDays[key] || !diaryDays[key].length){
+    var first={id:newDayId(), text:(diary[key]||'')};
+    diaryDays[key]=[first];
+  }
+  return diaryDays[key];
+}
 var customStops = JSON.parse(localStorage.getItem('rt_custom')||'[]'); // eigene Zwischenstopps
 var ROUTE = []; // effektive Reihenfolge aus Basis-Stationen + eigenen Zwischenstopps
 function buildRoute(){
@@ -466,9 +485,10 @@ function deleteStop(key){
   customStops=customStops.filter(function(c){ return c.key!==key; });
   try{
     localStorage.setItem('rt_custom',JSON.stringify(customStops));
-    delete notes[key]; delete diary[key]; delete docs[key]; delete links[key]; delete doneStations[key];
+    delete notes[key]; delete diary[key]; delete diaryDays[key]; delete docs[key]; delete links[key]; delete doneStations[key];
     localStorage.setItem('rt_notes',JSON.stringify(notes));
     localStorage.setItem('rt_diary',JSON.stringify(diary));
+    saveDiaryDays();
     localStorage.setItem('rt_docs',JSON.stringify(docs));
     localStorage.setItem('rt_links',JSON.stringify(links));
     localStorage.setItem('rt_done',JSON.stringify(doneStations));
@@ -972,13 +992,23 @@ function renderStations(){
     h+='<textarea class="notes" id="note-'+i+'" placeholder="Eigene Notizen zu '+stop.city+'..." oninput="saveNote('+i+')">'+(notes[i]||'')+'</textarea>';
     h+='<div class="notes-saved" id="note-saved-'+i+'"></div></div>';
 
-    // Tagebuch (Text + Fotos, lokal auf dem Gerät)
+    // Tagebuch – mehrere Tage pro Station (jeder Tag mit eigenem Text & Fotos), lokal auf dem Gerät
     h+='<div class="collapsible" onclick="this.classList.toggle(\'open\')">📔 Tagebuch</div><div class="collapsible-content">';
-    h+='<textarea class="notes" id="diary-'+i+'" placeholder="Was hast du in '+stop.city+' erlebt? Schreib dein Tagebuch..." oninput="saveDiary('+i+')">'+(diary[i]||'')+'</textarea>';
-    h+='<div class="notes-saved" id="diary-saved-'+i+'"></div>';
-    h+='<div class="diary-upload" onclick="document.getElementById(\'diary-file-'+i+'\').click()">📷 Fotos hinzufügen<input type="file" id="diary-file-'+i+'" accept="image/*" multiple style="display:none" onchange="diaryAddPhotos('+i+',this.files)"></div>';
-    h+='<div style="font-size:11px;color:var(--text-secondary);text-align:center;margin-top:4px">📍 Enthält das Foto GPS-Daten, wird der Ort erkannt – tippe auf den Ort unter dem Bild, um ihn auf Google Maps zu öffnen</div>';
-    h+='<div class="diary-gallery" id="diary-photos-'+i+'"></div>';
+    var days=ensureDays(i);
+    for(var dd=0;dd<days.length;dd++){
+      var day=days[dd], did=day.id;
+      h+='<div class="diary-day">';
+      h+='<div class="diary-day-head"><span class="diary-day-title">📅 Tag '+(dd+1)+'</span>';
+      if(days.length>1) h+='<button class="diary-day-del" onclick="deleteDiaryDay('+i+',\''+did+'\')">🗑️ Tag löschen</button>';
+      h+='</div>';
+      h+='<textarea class="notes" id="diary-'+i+'-'+did+'" placeholder="Was hast du an Tag '+(dd+1)+' in '+stop.city+' erlebt?" oninput="saveDiaryDay('+i+',\''+did+'\')">'+(day.text||'')+'</textarea>';
+      h+='<div class="notes-saved" id="diary-saved-'+i+'-'+did+'"></div>';
+      h+='<div class="diary-upload" onclick="document.getElementById(\'diary-file-'+i+'-'+did+'\').click()">📷 Fotos zu Tag '+(dd+1)+' hinzufügen<input type="file" id="diary-file-'+i+'-'+did+'" accept="image/*" multiple style="display:none" onchange="diaryAddPhotos('+i+',this.files,\''+did+'\')"></div>';
+      h+='<div class="diary-gallery" id="diary-photos-'+i+'-'+did+'"></div>';
+      h+='</div>';
+    }
+    h+='<button class="diary-day-add" onclick="addDiaryDay('+i+')">➕ Weiteren Tag hinzufügen</button>';
+    h+='<div style="font-size:11px;color:var(--text-secondary);text-align:center;margin-top:6px">📍 Enthält ein Foto GPS-Daten, wird der Ort erkannt – tippe auf den Ort unter dem Bild, um ihn auf Google Maps zu öffnen</div>';
     h+='</div>';
 
     // Next stop
@@ -1016,12 +1046,42 @@ function prevDistanceText(idx){
   return '';
 }
 
-// ===== TAGEBUCH =====
-function saveDiary(idx){
-  diary[idx]=document.getElementById('diary-'+idx).value;
-  try{ localStorage.setItem('rt_diary',JSON.stringify(diary)); }catch(e){}
-  var st=document.getElementById('diary-saved-'+idx);
+// ===== TAGEBUCH (mehrere Tage pro Station) =====
+function saveDiaryDay(idx, dayId){
+  var days=ensureDays(idx);
+  for(var k=0;k<days.length;k++){ if(days[k].id===dayId){
+    var ta=document.getElementById('diary-'+idx+'-'+dayId);
+    if(ta) days[k].text=ta.value;
+    break;
+  }}
+  saveDiaryDays();
+  var st=document.getElementById('diary-saved-'+idx+'-'+dayId);
   if(st){ st.textContent='✓ Gespeichert'; setTimeout(function(){ st.textContent=''; },1500); }
+}
+function addDiaryDay(idx){
+  var days=ensureDays(idx);
+  days.push({id:newDayId(), text:''});
+  saveDiaryDays();
+  renderStations(); go(idx);
+}
+function deleteDiaryDay(idx, dayId){
+  var days=ensureDays(idx);
+  if(days.length<=1) return;
+  if(!confirm('Diesen Tag inkl. seiner Fotos löschen?')) return;
+  diaryDays[idx]=days.filter(function(d){ return d.id!==dayId; });
+  saveDiaryDays();
+  // zugehörige Fotos aus IndexedDB entfernen
+  if(mediaDB){ try{
+    var tx=mediaDB.transaction('photos','readwrite');
+    var store=tx.objectStore('photos');
+    var req=store.index('station').getAll(idx);
+    req.onsuccess=function(){
+      var items=req.result||[];
+      for(var n=0;n<items.length;n++){ if(items[n].day===dayId) store.delete(items[n].id); }
+    };
+    tx.oncomplete=function(){ renderStations(); go(idx); };
+  }catch(e){ renderStations(); go(idx); } }
+  else { renderStations(); go(idx); }
 }
 // Fotospeicher (IndexedDB – großer Speicher, bleibt auf dem Gerät)
 var mediaDB=null;
@@ -1140,8 +1200,9 @@ function reverseGeocode(lat, lon, cb){
   }catch(e){ cb(null); }
 }
 
-function diaryAddPhotos(idx, files){
+function diaryAddPhotos(idx, files, dayId){
   if(!mediaDB){ alert('Fotospeicher wird noch geladen – bitte kurz warten und erneut versuchen.'); return; }
+  var dz=ensureDays(idx); if(!dayId){ dayId=dz[0].id; } saveDiaryDays();   // Fallback: erster Tag; Tage sichern
   var arr=Array.prototype.slice.call(files), done=0, total=arr.length;
   if(total===0) return;
   arr.forEach(function(file){
@@ -1151,7 +1212,7 @@ function diaryAddPhotos(idx, files){
       ready++;
       if(ready<2) return; // erst speichern, wenn Bild komprimiert UND Standort geprüft
       try{
-        var rec={station:idx,name:file.name,ts:Date.now(),data:dataUrl};
+        var rec={station:idx,day:dayId,name:file.name,ts:Date.now(),data:dataUrl};
         if(gps){ rec.lat=gps.lat; rec.lon=gps.lon; }
         if(place) rec.place=place;
         var tx=mediaDB.transaction('photos','readwrite');
@@ -1167,31 +1228,48 @@ function diaryAddPhotos(idx, files){
     });
   });
 }
+// HTML für die Foto-Thumbnails eines Tages
+function diaryThumbsHtml(items, idx){
+  var html='';
+  for(var k=0;k<items.length;k++){
+    var lat=items[k].lat, lon=items[k].lon, hasGeo=(lat!=null && lon!=null);
+    var cap='';
+    if(items[k].place) cap='📍 '+items[k].place;
+    else if(hasGeo) cap='📍 '+Number(lat).toFixed(3)+', '+Number(lon).toFixed(3);
+    var capHtml='';
+    if(hasGeo){
+      var q=Number(lat)+','+Number(lon);
+      var t=(cap+' – auf Google Maps ansehen').replace(/"/g,'&quot;');
+      capHtml='<a class="diary-cap" href="https://www.google.com/maps/search/?api=1&query='+q+'" target="_blank" rel="noopener" title="'+t+'" onclick="event.stopPropagation()">'+cap+' 🗺️›</a>';
+    } else if(cap){
+      capHtml='<div class="diary-cap" title="'+cap.replace(/"/g,'&quot;')+'">'+cap+'</div>';
+    }
+    html+='<div class="diary-thumb"><img src="'+items[k].data+'" onclick="viewDiaryPhoto('+items[k].id+')"><button class="diary-del" onclick="deleteDiaryPhoto('+items[k].id+','+idx+')">🗑️</button>'+capHtml+'</div>';
+  }
+  return html;
+}
 function loadDiaryPhotos(idx){
-  var cont=document.getElementById('diary-photos-'+idx);
-  if(!cont||!mediaDB) return;
+  if(!mediaDB) return;
+  var days=(diaryDays[idx]&&diaryDays[idx].length)?diaryDays[idx]:null;
+  var firstDayId=days?days[0].id:null;
+  var validIds={}; if(days){ for(var v=0;v<days.length;v++) validIds[days[v].id]=true; }
   try{
     var tx=mediaDB.transaction('photos','readonly');
     var req=tx.objectStore('photos').index('station').getAll(idx);
     req.onsuccess=function(){
-      var items=req.result||[];
-      var html='';
+      var items=req.result||[], byDay={};
       for(var k=0;k<items.length;k++){
-        var lat=items[k].lat, lon=items[k].lon, hasGeo=(lat!=null && lon!=null);
-        var cap='';
-        if(items[k].place) cap='📍 '+items[k].place;
-        else if(hasGeo) cap='📍 '+Number(lat).toFixed(3)+', '+Number(lon).toFixed(3);
-        var capHtml='';
-        if(hasGeo){
-          var q=Number(lat)+','+Number(lon);
-          var t=(cap+' – auf Google Maps ansehen').replace(/"/g,'&quot;');
-          capHtml='<a class="diary-cap" href="https://www.google.com/maps/search/?api=1&query='+q+'" target="_blank" rel="noopener" title="'+t+'" onclick="event.stopPropagation()">'+cap+' 🗺️›</a>';
-        } else if(cap){
-          capHtml='<div class="diary-cap" title="'+cap.replace(/"/g,'&quot;')+'">'+cap+'</div>';
-        }
-        html+='<div class="diary-thumb"><img src="'+items[k].data+'" onclick="viewDiaryPhoto('+items[k].id+')"><button class="diary-del" onclick="deleteDiaryPhoto('+items[k].id+','+idx+')">🗑️</button>'+capHtml+'</div>';
+        var dId=items[k].day;
+        if(!dId || !validIds[dId]) dId=firstDayId;   // Legacy-/verwaiste Fotos -> erster Tag
+        if(!byDay[dId]) byDay[dId]=[];
+        byDay[dId].push(items[k]);
       }
-      cont.innerHTML=html;
+      if(days){
+        for(var di=0;di<days.length;di++){
+          var cont=document.getElementById('diary-photos-'+idx+'-'+days[di].id);
+          if(cont) cont.innerHTML=diaryThumbsHtml(byDay[days[di].id]||[], idx);
+        }
+      }
     };
   }catch(e){}
 }
@@ -1275,6 +1353,9 @@ function moveLocalDoc(id, toIdx){
 function initApp(){
   if(typeof pdfjsLib!=='undefined' && pdfjsLib.GlobalWorkerOptions){ pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'; }
   refreshRoute();
+  // Tagebuch-Tage einmalig sichern, damit Tag-Kennungen über Sitzungen stabil bleiben
+  for(var _m=0;_m<ROUTE.length;_m++) ensureDays(ROUTE[_m].key);
+  saveDiaryDays();
   if(darkMode){ document.body.classList.add('dark-mode'); document.getElementById('darkBtn').textContent='☀️'; }
   renderCountdown();
   updateHomeClock();
