@@ -102,6 +102,10 @@
     .diary-thumb { position: relative; }
     .diary-thumb img { width: 100%; height: 90px; object-fit: cover; border-radius: 8px; cursor: pointer; border: 1px solid var(--border); display: block; }
     .diary-del { position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,.6); color: #fff; border: none; border-radius: 6px; font-size: 12px; padding: 3px 6px; cursor: pointer; }
+    .diary-cap { position: absolute; left: 0; right: 0; bottom: 0; background: linear-gradient(transparent, rgba(0,0,0,.75)); color: #fff; font-size: 10px; line-height: 1.2; padding: 10px 5px 4px; border-radius: 0 0 8px 8px; pointer-events: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    /* TOAST */
+    .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(20px); background: #16a34a; color: #fff; padding: 12px 18px; border-radius: 10px; font-size: 14px; font-weight: 600; box-shadow: 0 6px 20px rgba(0,0,0,.25); opacity: 0; transition: all .3s; z-index: 9999; max-width: 90%; text-align: center; }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
     /* DROPZONE */
     .dropzone { border: 2px dashed var(--border); border-radius: 12px; padding: 24px; text-align: center; transition: all .2s; cursor: pointer; background: var(--bg); }
     .dropzone.active { border-color: var(--accent); background: rgba(59,130,246,.08); }
@@ -961,6 +965,7 @@ function renderStations(){
     h+='<textarea class="notes" id="diary-'+i+'" placeholder="Was hast du in '+stop.city+' erlebt? Schreib dein Tagebuch..." oninput="saveDiary('+i+')">'+(diary[i]||'')+'</textarea>';
     h+='<div class="notes-saved" id="diary-saved-'+i+'"></div>';
     h+='<div class="diary-upload" onclick="document.getElementById(\'diary-file-'+i+'\').click()">📷 Fotos hinzufügen<input type="file" id="diary-file-'+i+'" accept="image/*" multiple style="display:none" onchange="diaryAddPhotos('+i+',this.files)"></div>';
+    h+='<div style="font-size:11px;color:var(--text-secondary);text-align:center;margin-top:4px">📍 Enthält das Foto GPS-Daten, wird der Ort automatisch erkannt</div>';
     h+='<div class="diary-gallery" id="diary-photos-'+i+'"></div>';
     h+='</div>';
 
@@ -1037,19 +1042,110 @@ function compressImage(file, cb){
   };
   reader.readAsDataURL(file);
 }
+// ===== STANDORT-ERKENNUNG (EXIF-GPS aus Foto + Ortsname) =====
+// Kurze Info-Einblendung unten am Bildschirm
+function showToast(msg){
+  try{
+    var t=document.getElementById('appToast');
+    if(!t){ t=document.createElement('div'); t.id='appToast'; t.className='toast'; document.body.appendChild(t); }
+    t.textContent=msg;
+    t.classList.add('show');
+    clearTimeout(t._h);
+    t._h=setTimeout(function(){ t.classList.remove('show'); }, 3500);
+  }catch(e){}
+}
+// GPS-Koordinaten aus den EXIF-Daten eines Fotos lesen (ohne externe Bibliothek)
+function getExifGps(file, cb){
+  try{
+    if(!file || (file.type||'').indexOf('image')===-1){ cb(null); return; }
+    var reader=new FileReader();
+    reader.onload=function(e){
+      try{
+        var view=new DataView(e.target.result);
+        if(view.getUint16(0,false)!==0xFFD8){ cb(null); return; } // kein JPEG
+        var len=view.byteLength, offset=2, tiff=0;
+        while(offset<len-1){
+          if(view.getUint8(offset)!==0xFF){ cb(null); return; }
+          var marker=view.getUint16(offset,false);
+          if(marker===0xFFE1){ // APP1 = EXIF
+            var es=offset+4;
+            if(view.getUint32(es,false)!==0x45786966){ cb(null); return; } // "Exif"
+            tiff=es+6; break;
+          }
+          offset += 2 + view.getUint16(offset+2,false);
+        }
+        if(!tiff){ cb(null); return; }
+        var little=view.getUint16(tiff,false)===0x4949;
+        function u16(o){ return view.getUint16(o,little); }
+        function u32(o){ return view.getUint32(o,little); }
+        var ifd0=tiff+u32(tiff+4), n=u16(ifd0), gps=0, i, ent;
+        for(i=0;i<n;i++){ ent=ifd0+2+i*12; if(u16(ent)===0x8825){ gps=tiff+u32(ent+8); break; } }
+        if(!gps){ cb(null); return; }
+        var gn=u16(gps), latR='N', lonR='E', lat=null, lon=null;
+        function rat3(o){ var vo=tiff+u32(o+8), a=[], k; for(k=0;k<3;k++){ var num=view.getUint32(vo+k*8,little), den=view.getUint32(vo+k*8+4,little); a.push(den?num/den:0); } return a; }
+        for(i=0;i<gn;i++){ ent=gps+2+i*12; var tag=u16(ent);
+          if(tag===0x0001) latR=String.fromCharCode(view.getUint8(ent+8));
+          else if(tag===0x0003) lonR=String.fromCharCode(view.getUint8(ent+8));
+          else if(tag===0x0002) lat=rat3(ent);
+          else if(tag===0x0004) lon=rat3(ent);
+        }
+        if(!lat||!lon){ cb(null); return; }
+        var la=lat[0]+lat[1]/60+lat[2]/3600; if(latR==='S') la=-la;
+        var lo=lon[0]+lon[1]/60+lon[2]/3600; if(lonR==='W') lo=-lo;
+        if(!isFinite(la)||!isFinite(lo)||(la===0&&lo===0)){ cb(null); return; }
+        cb({lat:la, lon:lo});
+      }catch(err){ cb(null); }
+    };
+    reader.onerror=function(){ cb(null); };
+    reader.readAsArrayBuffer(file.slice(0, 131072)); // EXIF liegt am Dateianfang (max ~64 KB)
+  }catch(e){ cb(null); }
+}
+// Koordinaten -> Ortsname (OpenStreetMap/Nominatim; braucht Internet)
+function reverseGeocode(lat, lon, cb){
+  try{
+    var xhr=new XMLHttpRequest();
+    xhr.open('GET','https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=14&accept-language=de&lat='+lat+'&lon='+lon,true);
+    xhr.timeout=9000;
+    xhr.onload=function(){
+      try{
+        var d=JSON.parse(xhr.responseText), a=d.address||{};
+        var name=a.tourism||a.attraction||a.natural||a.peak||a.water||a.village||a.town||a.city||a.suburb||a.municipality||a.county||(d.name||'');
+        var region=a.state||a.region||a.country||'';
+        var label=name||'';
+        if(region && region!==name) label += (label?', ':'')+region;
+        cb(label||null);
+      }catch(e){ cb(null); }
+    };
+    xhr.onerror=function(){ cb(null); };
+    xhr.ontimeout=function(){ cb(null); };
+    xhr.send();
+  }catch(e){ cb(null); }
+}
+
 function diaryAddPhotos(idx, files){
   if(!mediaDB){ alert('Fotospeicher wird noch geladen – bitte kurz warten und erneut versuchen.'); return; }
   var arr=Array.prototype.slice.call(files), done=0, total=arr.length;
   if(total===0) return;
   arr.forEach(function(file){
     if(!file.type || file.type.indexOf('image')===-1){ done++; if(done===total) loadDiaryPhotos(idx); return; }
-    compressImage(file, function(dataUrl){
+    var dataUrl=null, gps=null, place=null, ready=0;
+    function finish(){
+      ready++;
+      if(ready<2) return; // erst speichern, wenn Bild komprimiert UND Standort geprüft
       try{
+        var rec={station:idx,name:file.name,ts:Date.now(),data:dataUrl};
+        if(gps){ rec.lat=gps.lat; rec.lon=gps.lon; }
+        if(place) rec.place=place;
         var tx=mediaDB.transaction('photos','readwrite');
-        tx.objectStore('photos').add({station:idx,name:file.name,ts:Date.now(),data:dataUrl});
-        tx.oncomplete=function(){ done++; if(done===total) loadDiaryPhotos(idx); };
+        tx.objectStore('photos').add(rec);
+        tx.oncomplete=function(){ if(place) showToast('📍 Standort erkannt: '+place); done++; if(done===total) loadDiaryPhotos(idx); };
         tx.onerror=function(){ done++; if(done===total) loadDiaryPhotos(idx); };
       }catch(e){ done++; if(done===total) loadDiaryPhotos(idx); }
+    }
+    compressImage(file, function(u){ dataUrl=u; finish(); });
+    getExifGps(file, function(g){
+      if(g){ gps=g; reverseGeocode(g.lat, g.lon, function(nm){ place=nm; finish(); }); }
+      else { finish(); }
     });
   });
 }
@@ -1063,7 +1159,11 @@ function loadDiaryPhotos(idx){
       var items=req.result||[];
       var html='';
       for(var k=0;k<items.length;k++){
-        html+='<div class="diary-thumb"><img src="'+items[k].data+'" onclick="viewDiaryPhoto('+items[k].id+')"><button class="diary-del" onclick="deleteDiaryPhoto('+items[k].id+','+idx+')">🗑️</button></div>';
+        var cap='';
+        if(items[k].place) cap='📍 '+items[k].place;
+        else if(items[k].lat!=null && items[k].lon!=null) cap='📍 '+Number(items[k].lat).toFixed(3)+', '+Number(items[k].lon).toFixed(3);
+        var capHtml = cap ? '<div class="diary-cap" title="'+cap.replace(/"/g,'&quot;')+'">'+cap+'</div>' : '';
+        html+='<div class="diary-thumb"><img src="'+items[k].data+'" onclick="viewDiaryPhoto('+items[k].id+')"><button class="diary-del" onclick="deleteDiaryPhoto('+items[k].id+','+idx+')">🗑️</button>'+capHtml+'</div>';
       }
       cont.innerHTML=html;
     };
