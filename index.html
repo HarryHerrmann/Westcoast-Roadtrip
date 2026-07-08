@@ -102,7 +102,9 @@
     .diary-thumb { position: relative; }
     .diary-thumb img { width: 100%; height: 90px; object-fit: cover; border-radius: 8px; cursor: pointer; border: 1px solid var(--border); display: block; }
     .diary-del { position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,.6); color: #fff; border: none; border-radius: 6px; font-size: 12px; padding: 3px 6px; cursor: pointer; }
-    .diary-cap { position: absolute; left: 0; right: 0; bottom: 0; background: linear-gradient(transparent, rgba(0,0,0,.75)); color: #fff; font-size: 10px; line-height: 1.2; padding: 10px 5px 4px; border-radius: 0 0 8px 8px; pointer-events: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .diary-cap { position: absolute; left: 0; right: 0; bottom: 0; background: linear-gradient(transparent, rgba(0,0,0,.75)); color: #fff; font-size: 10px; line-height: 1.2; padding: 10px 5px 4px; border-radius: 0 0 8px 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    a.diary-cap { display: block; cursor: pointer; text-decoration: none; }
+    a.diary-cap:hover { background: linear-gradient(transparent, rgba(22,101,52,.9)); }
     /* TOAST */
     .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(20px); background: #16a34a; color: #fff; padding: 12px 18px; border-radius: 10px; font-size: 14px; font-weight: 600; box-shadow: 0 6px 20px rgba(0,0,0,.25); opacity: 0; transition: all .3s; z-index: 9999; max-width: 90%; text-align: center; }
     .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
@@ -568,31 +570,35 @@ function dzOver(e,idx){ e.preventDefault(); document.getElementById('dz-'+idx).c
 function dzLeave(e,idx){ document.getElementById('dz-'+idx).classList.remove('active'); }
 function dzDrop(e,idx){ e.preventDefault(); document.getElementById('dz-'+idx).classList.remove('active'); handleFiles(e.dataTransfer.files,idx); }
 function dzInput(e,idx){ handleFiles(e.target.files,idx); }
+// Dokumente werden LOKAL auf dem Gerät gespeichert (IndexedDB – auch große PDFs
+// wie Reisepass/Visum). Sie verlassen das Gerät NICHT und landen nie im Internet.
 function handleFiles(files,idx){
-  var count=0, total=files.length, moved=0, lastTarget=idx;
-  for(var i=0;i<files.length;i++){
-    (function(file){
-      var info=classifyDoc(file.name);
-      var det=detectStation(file.name);
-      var target = (det>-1) ? det : idx;   // Smart-Zuordnung nach Dateiname
-      if(det>-1 && det!==idx) moved++;
-      lastTarget=target;
-      if(!docs[target]) docs[target]=[];
-      var reader=new FileReader();
-      reader.onload=function(ev){
-        docs[target].push({name:file.name,cat:info.cat,icon:info.icon,color:info.color,size:(file.size/1024/1024).toFixed(2)+' MB',type:file.type||'',data:ev.target.result});
-        count++;
-        if(count===total){
-          try{ localStorage.setItem('rt_docs',JSON.stringify(docs)); }
-          catch(err){ alert('Speicher voll — Dokumente werden nur in dieser Sitzung gehalten. Für viele/große Dateien bitte den Drive-Ordner nutzen.'); }
-          if(moved>0){ alert(moved+' Dokument(e) wurden automatisch der passenden Station zugeordnet.'); }
-          renderStations(); go(lastTarget);
-        }
-      };
-      reader.onerror=function(){ count++; if(count===total){ renderStations(); go(lastTarget); } };
-      reader.readAsDataURL(file);
-    })(files[i]);
+  if(!mediaDB){ alert('Speicher wird noch geladen – bitte kurz warten und erneut versuchen.'); return; }
+  var arr=Array.prototype.slice.call(files), total=arr.length, done=0, moved=0, lastTarget=idx;
+  if(total===0) return;
+  function finishUp(){
+    if(moved>0) showToast(moved+' Dokument(e) automatisch zugeordnet');
+    renderStations(); go(lastTarget);
   }
+  arr.forEach(function(file){
+    var info=classifyDoc(file.name);
+    var det=detectStation(file.name);
+    var target = (det>-1) ? det : idx;   // Smart-Zuordnung nach Dateiname
+    if(det>-1 && det!==idx) moved++;
+    lastTarget=target;
+    var reader=new FileReader();
+    reader.onload=function(ev){
+      try{
+        var rec={station:target,name:file.name,cat:info.cat,icon:info.icon,color:info.color,size:(file.size/1024/1024).toFixed(2)+' MB',type:file.type||'',data:ev.target.result,ts:Date.now()};
+        var tx=mediaDB.transaction('localdocs','readwrite');
+        tx.objectStore('localdocs').add(rec);
+        tx.oncomplete=function(){ done++; if(done===total) finishUp(); };
+        tx.onerror=function(){ done++; if(done===total){ alert('Ein Dokument konnte nicht gespeichert werden (evtl. Speicher voll).'); finishUp(); } };
+      }catch(e){ done++; if(done===total) finishUp(); }
+    };
+    reader.onerror=function(){ done++; if(done===total) finishUp(); };
+    reader.readAsDataURL(file);
+  });
 }
 function pdfFallbackHtml(){
   return '<div style="text-align:center;padding:24px 8px">'
@@ -939,14 +945,17 @@ function renderStations(){
       }
     }
 
-    // --- Datei-Upload (lokal) ---
+    // --- Eigene Dokumente: nur lokal auf dem Gerät (auch große PDFs wie Pass/Visum) ---
+    h+='<div style="font-weight:700;font-size:13px;margin:8px 0 6px">🔒 Meine Dokumente <span style="font-weight:400;color:var(--text-secondary)">(bleiben nur auf diesem Gerät)</span></div>';
     h+='<div class="dropzone" id="dz-'+i+'" ondragover="dzOver(event,'+i+')" ondragleave="dzLeave(event,'+i+')" ondrop="dzDrop(event,'+i+')" onclick="document.getElementById(\'fi-'+i+'\').click()">';
-    h+='<div class="dz-icon">📤</div><div class="dz-main">Datei hochladen (lokal im Browser)</div><div class="dz-sub">Mehrere möglich · Auto-Erkennung (Hotel, ESTA, Ticket, Pass, Mietwagen...)</div>';
-    h+='<input type="file" id="fi-'+i+'" multiple style="display:none" onchange="dzInput(event,'+i+')"></div>';
+    h+='<div class="dz-icon">📤</div><div class="dz-main">Dokument hochladen</div><div class="dz-sub">PDF oder Bild · z.B. Reisepass, Visum, Ticket · Auto-Erkennung · wird NICHT ins Internet geladen</div>';
+    h+='<input type="file" id="fi-'+i+'" accept="application/pdf,image/*" multiple style="display:none" onchange="dzInput(event,'+i+')"></div>';
+    h+='<div id="mydocs-'+i+'"></div>';
+    // Alt-Bestand: früher lokal (localStorage) gespeicherte Dokumente – weiterhin sichtbar
     if(docs[i]){
       for(var d=0;d<docs[i].length;d++){
         var doc=docs[i][d];
-        h+='<div class="doc-item"><span style="font-size:22px">'+doc.icon+'</span><div class="doc-meta"><div class="doc-name">'+doc.name+'</div><div class="doc-sub"><span class="doc-cat" style="background:'+doc.color+'">'+doc.cat+'</span> '+doc.size+'</div>';
+        h+='<div class="doc-item"><span style="font-size:22px">'+doc.icon+'</span><div class="doc-meta"><div class="doc-name">'+doc.name+'</div><div class="doc-sub"><span class="doc-cat" style="background:'+doc.color+'">'+doc.cat+'</span> '+doc.size+' <span style="background:#0ea5e9;color:#fff;font-size:11px;padding:2px 8px;border-radius:12px">🔒 nur auf diesem Gerät</span></div>';
         h+='<select class="doc-move" onchange="moveDoc('+i+','+d+',this.value)">';
         for(var so=0;so<ROUTE.length;so++){ var ok=ROUTE[so].key; h+='<option value="'+ok+'"'+(ok===i?' selected':'')+'>'+ROUTE[so].stop.icon+' '+ROUTE[so].stop.city+'</option>'; }
         h+='</select></div>';
@@ -965,7 +974,7 @@ function renderStations(){
     h+='<textarea class="notes" id="diary-'+i+'" placeholder="Was hast du in '+stop.city+' erlebt? Schreib dein Tagebuch..." oninput="saveDiary('+i+')">'+(diary[i]||'')+'</textarea>';
     h+='<div class="notes-saved" id="diary-saved-'+i+'"></div>';
     h+='<div class="diary-upload" onclick="document.getElementById(\'diary-file-'+i+'\').click()">📷 Fotos hinzufügen<input type="file" id="diary-file-'+i+'" accept="image/*" multiple style="display:none" onchange="diaryAddPhotos('+i+',this.files)"></div>';
-    h+='<div style="font-size:11px;color:var(--text-secondary);text-align:center;margin-top:4px">📍 Enthält das Foto GPS-Daten, wird der Ort automatisch erkannt</div>';
+    h+='<div style="font-size:11px;color:var(--text-secondary);text-align:center;margin-top:4px">📍 Enthält das Foto GPS-Daten, wird der Ort erkannt – tippe auf den Ort unter dem Bild, um ihn auf Google Maps zu öffnen</div>';
     h+='<div class="diary-gallery" id="diary-photos-'+i+'"></div>';
     h+='</div>';
 
@@ -992,6 +1001,8 @@ function renderStations(){
     card.innerHTML=h;
     main.appendChild(card);
   }
+  // Geräte-Medien (Fotos + lokale Dokumente aus IndexedDB) nach dem Neu-Rendern wieder einfüllen
+  if(mediaDB){ setTimeout(function(){ loadAllDiaryPhotos(); loadAllLocalDocs(); }, 0); }
 }
 
 // Distanz-Text vom Vorgängerort
@@ -1013,12 +1024,16 @@ function saveDiary(idx){
 var mediaDB=null;
 function openMediaDB(cb){
   try{
-    var req=indexedDB.open('rt_media',1);
+    var req=indexedDB.open('rt_media',2);
     req.onupgradeneeded=function(e){
       var db=e.target.result;
       if(!db.objectStoreNames.contains('photos')){
         var storeObj=db.createObjectStore('photos',{keyPath:'id',autoIncrement:true});
         storeObj.createIndex('station','station',{unique:false});
+      }
+      if(!db.objectStoreNames.contains('localdocs')){
+        var docStore=db.createObjectStore('localdocs',{keyPath:'id',autoIncrement:true});
+        docStore.createIndex('station','station',{unique:false});
       }
     };
     req.onsuccess=function(e){ mediaDB=e.target.result; if(cb)cb(); };
@@ -1159,10 +1174,18 @@ function loadDiaryPhotos(idx){
       var items=req.result||[];
       var html='';
       for(var k=0;k<items.length;k++){
+        var lat=items[k].lat, lon=items[k].lon, hasGeo=(lat!=null && lon!=null);
         var cap='';
         if(items[k].place) cap='📍 '+items[k].place;
-        else if(items[k].lat!=null && items[k].lon!=null) cap='📍 '+Number(items[k].lat).toFixed(3)+', '+Number(items[k].lon).toFixed(3);
-        var capHtml = cap ? '<div class="diary-cap" title="'+cap.replace(/"/g,'&quot;')+'">'+cap+'</div>' : '';
+        else if(hasGeo) cap='📍 '+Number(lat).toFixed(3)+', '+Number(lon).toFixed(3);
+        var capHtml='';
+        if(hasGeo){
+          var q=Number(lat)+','+Number(lon);
+          var t=(cap+' – auf Google Maps ansehen').replace(/"/g,'&quot;');
+          capHtml='<a class="diary-cap" href="https://www.google.com/maps/search/?api=1&query='+q+'" target="_blank" rel="noopener" title="'+t+'" onclick="event.stopPropagation()">'+cap+' 🗺️›</a>';
+        } else if(cap){
+          capHtml='<div class="diary-cap" title="'+cap.replace(/"/g,'&quot;')+'">'+cap+'</div>';
+        }
         html+='<div class="diary-thumb"><img src="'+items[k].data+'" onclick="viewDiaryPhoto('+items[k].id+')"><button class="diary-del" onclick="deleteDiaryPhoto('+items[k].id+','+idx+')">🗑️</button>'+capHtml+'</div>';
       }
       cont.innerHTML=html;
@@ -1184,6 +1207,54 @@ function deleteDiaryPhoto(id, idx){
 }
 function loadAllDiaryPhotos(){ for(var r=0;r<ROUTE.length;r++) loadDiaryPhotos(ROUTE[r].key); }
 
+// ===== LOKALE DOKUMENTE (nur auf diesem Gerät, IndexedDB) =====
+function loadLocalDocs(idx){
+  var cont=document.getElementById('mydocs-'+idx);
+  if(!cont||!mediaDB) return;
+  try{
+    var tx=mediaDB.transaction('localdocs','readonly');
+    var req=tx.objectStore('localdocs').index('station').getAll(idx);
+    req.onsuccess=function(){
+      var items=req.result||[], html='';
+      for(var k=0;k<items.length;k++){
+        var it=items[k];
+        html+='<div class="doc-item"><span style="font-size:22px">'+(it.icon||'📄')+'</span><div class="doc-meta"><div class="doc-name">'+it.name+'</div><div class="doc-sub"><span class="doc-cat" style="background:'+(it.color||'#64748b')+'">'+(it.cat||'Dokument')+'</span> '+(it.size||'')+' <span style="background:#0ea5e9;color:#fff;font-size:11px;padding:2px 8px;border-radius:12px">🔒 nur auf diesem Gerät</span></div>';
+        html+='<select class="doc-move" onchange="moveLocalDoc('+it.id+',this.value)">';
+        for(var so=0;so<ROUTE.length;so++){ var ok=ROUTE[so].key; html+='<option value="'+ok+'"'+(ok===idx?' selected':'')+'>'+ROUTE[so].stop.icon+' '+ROUTE[so].stop.city+'</option>'; }
+        html+='</select></div>';
+        html+='<button class="icon-btn" onclick="viewLocalDoc('+it.id+')" title="Öffnen">👁️</button><button class="icon-btn" onclick="deleteLocalDoc('+it.id+','+idx+')" title="Löschen">🗑️</button></div>';
+      }
+      cont.innerHTML=html;
+    };
+  }catch(e){}
+}
+function loadAllLocalDocs(){ for(var r=0;r<ROUTE.length;r++) loadLocalDocs(ROUTE[r].key); }
+function viewLocalDoc(id){
+  if(!mediaDB) return;
+  var tx=mediaDB.transaction('localdocs','readonly');
+  var req=tx.objectStore('localdocs').get(id);
+  req.onsuccess=function(){ if(req.result) showInViewer(req.result); };
+}
+function deleteLocalDoc(id, idx){
+  if(!mediaDB) return;
+  if(!confirm('Dieses Dokument von diesem Gerät löschen?')) return;
+  var tx=mediaDB.transaction('localdocs','readwrite');
+  tx.objectStore('localdocs').delete(id);
+  tx.oncomplete=function(){ loadLocalDocs(idx); };
+}
+function moveLocalDoc(id, toIdx){
+  if(!mediaDB) return;
+  toIdx=parseInt(toIdx,10);
+  var tx=mediaDB.transaction('localdocs','readwrite');
+  var store=tx.objectStore('localdocs');
+  var req=store.get(id);
+  req.onsuccess=function(){
+    var rec=req.result; if(!rec) return;
+    var from=rec.station; rec.station=toIdx; store.put(rec);
+    tx.oncomplete=function(){ renderStations(); go(toIdx); };
+  };
+}
+
 // ===== INIT =====
 function initApp(){
   if(typeof pdfjsLib!=='undefined' && pdfjsLib.GlobalWorkerOptions){ pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'; }
@@ -1197,7 +1268,7 @@ function initApp(){
   renderStations();
   go(0);
   loadRate();
-  openMediaDB(loadAllDiaryPhotos);
+  openMediaDB(function(){ loadAllDiaryPhotos(); loadAllLocalDocs(); });
 }
 
 window.addEventListener('load',function(){
