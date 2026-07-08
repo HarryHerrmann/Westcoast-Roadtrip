@@ -101,7 +101,7 @@
     .diary-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 8px; margin-top: 10px; }
     .diary-thumb { position: relative; }
     .diary-thumb img { width: 100%; height: 90px; object-fit: cover; border-radius: 8px; cursor: pointer; border: 1px solid var(--border); display: block; }
-    .diary-del { position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,.6); color: #fff; border: none; border-radius: 6px; font-size: 12px; padding: 3px 6px; cursor: pointer; }
+    .diary-del { position: absolute; top: 5px; right: 5px; z-index: 3; background: #dc2626; color: #fff; border: 1.5px solid #fff; border-radius: 8px; font-size: 15px; line-height: 1; padding: 5px 8px; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,.45); }
     .diary-cap { position: absolute; left: 0; right: 0; bottom: 0; background: linear-gradient(transparent, rgba(0,0,0,.75)); color: #fff; font-size: 10px; line-height: 1.2; padding: 10px 5px 4px; border-radius: 0 0 8px 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     a.diary-cap { display: block; cursor: pointer; text-decoration: none; }
     a.diary-cap:hover { background: linear-gradient(transparent, rgba(22,101,52,.9)); }
@@ -272,6 +272,7 @@
     <div class="doc-modal-foot">
       <a id="docOpen" class="doc-action" target="_blank" rel="noopener">🔎 In neuem Tab öffnen</a>
       <a id="docDownload" class="doc-action secondary" target="_blank" rel="noopener" download>⬇️ Herunterladen</a>
+      <button id="docDelete" class="doc-action" style="display:none;background:#dc2626;color:#fff">🗑️ Foto löschen</button>
       <button class="doc-action secondary" onclick="closeModal('docModal')">Schließen</button>
     </div>
   </div>
@@ -634,6 +635,8 @@ function renderPdfInline(url, container){
   }).catch(function(){ container.innerHTML=pdfFallbackHtml(); });
 }
 function showInViewer(d){
+  var delBtn=document.getElementById('docDelete');
+  if(delBtn){ delBtn.style.display='none'; delBtn.onclick=null; }   // nur bei Tagebuch-Fotos einblenden
   document.getElementById('docTitle').textContent=(d.icon?d.icon+' ':'')+d.name;
   var view=document.getElementById('docView');
   var dl=document.getElementById('docDownload');
@@ -1196,7 +1199,20 @@ function viewDiaryPhoto(id){
   if(!mediaDB) return;
   var tx=mediaDB.transaction('photos','readonly');
   var req=tx.objectStore('photos').get(id);
-  req.onsuccess=function(){ if(req.result) showInViewer({name:req.result.name||'Foto',type:'image/jpeg',data:req.result.data}); };
+  req.onsuccess=function(){
+    var rec=req.result; if(!rec) return;
+    showInViewer({name:rec.name||'Foto',type:'image/jpeg',data:rec.data});
+    var del=document.getElementById('docDelete');
+    if(del){
+      del.style.display='';
+      del.onclick=function(){
+        if(!confirm('Dieses Foto wirklich löschen?')) return;
+        var t2=mediaDB.transaction('photos','readwrite');
+        t2.objectStore('photos').delete(id);
+        t2.oncomplete=function(){ closeModal('docModal'); loadDiaryPhotos(rec.station); };
+      };
+    }
+  };
 }
 function deleteDiaryPhoto(id, idx){
   if(!mediaDB) return;
