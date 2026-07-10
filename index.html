@@ -110,6 +110,9 @@
     .diary-day-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
     .diary-day-title { font-weight: 700; font-size: 15px; }
     .diary-day-del { background: transparent; color: #dc2626; border: 1px solid #dc2626; border-radius: 6px; font-size: 12px; padding: 4px 8px; cursor: pointer; }
+    .diary-day-date { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; font-size: 13px; color: var(--text-secondary); }
+    .diary-day-date input[type=date] { padding: 7px 9px; border: 1px solid var(--border); border-radius: 8px; background: var(--card-bg); color: var(--text); font-size: 14px; font-family: inherit; }
+    .diary-day-datetxt { font-weight: 700; color: var(--accent); }
     .diary-day-add { width: 100%; margin-top: 2px; padding: 11px; border: 1.5px dashed var(--accent); background: transparent; color: var(--accent); border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; }
     .diary-day-add:hover { background: rgba(59,130,246,.08); }
     /* TOAST */
@@ -618,34 +621,95 @@ function dzOver(e,idx){ e.preventDefault(); document.getElementById('dz-'+idx).c
 function dzLeave(e,idx){ document.getElementById('dz-'+idx).classList.remove('active'); }
 function dzDrop(e,idx){ e.preventDefault(); document.getElementById('dz-'+idx).classList.remove('active'); handleFiles(e.dataTransfer.files,idx); }
 function dzInput(e,idx){ handleFiles(e.target.files,idx); }
-// Dokumente werden LOKAL auf dem Gerät gespeichert (IndexedDB – auch große PDFs
-// wie Reisepass/Visum). Sie verlassen das Gerät NICHT und landen nie im Internet.
+// ===== VERSCHLÜSSELUNG DER LOKALEN DOKUMENTE (AES-GCM, Passwort-basiert) =====
+var docKey=null; // abgeleiteter Schlüssel, nur im Speicher dieser Sitzung
+function cryptoOK(){ return !!(window.crypto && crypto.subtle && window.TextEncoder); }
+function b64FromBuf(buf){ var b=new Uint8Array(buf), s='', CH=0x8000; for(var i=0;i<b.length;i+=CH){ s+=String.fromCharCode.apply(null, b.subarray(i,i+CH)); } return btoa(s); }
+function bufFromB64(str){ var s=atob(str), b=new Uint8Array(s.length); for(var i=0;i<s.length;i++) b[i]=s.charCodeAt(i); return b.buffer; }
+function deriveKey(pass, salt){
+  return crypto.subtle.importKey('raw', new TextEncoder().encode(pass), {name:'PBKDF2'}, false, ['deriveKey']).then(function(base){
+    return crypto.subtle.deriveKey({name:'PBKDF2', salt:salt, iterations:150000, hash:'SHA-256'}, base, {name:'AES-GCM', length:256}, false, ['encrypt','decrypt']);
+  });
+}
+// Passwort festlegen (erstes Mal) bzw. abfragen und prüfen; cb(true/false)
+function unlockDocs(cb){
+  if(docKey){ cb(true); return; }
+  if(!cryptoOK()){ alert('Verschlüsselung wird von diesem Browser nicht unterstützt. Bitte die App über https:// öffnen.'); cb(false); return; }
+  var saltB64=localStorage.getItem('rt_docsalt');
+  if(!saltB64){
+    var p1=prompt('Lege ein Passwort für deine Dokumente fest.\nGut merken – OHNE dieses Passwort sind die Dokumente NICHT wiederherstellbar!');
+    if(!p1){ cb(false); return; }
+    if(p1.length<4){ alert('Bitte ein längeres Passwort wählen (mind. 4 Zeichen).'); cb(false); return; }
+    var p2=prompt('Passwort zur Bestätigung noch einmal eingeben:');
+    if(p1!==p2){ alert('Die Passwörter stimmen nicht überein.'); cb(false); return; }
+    var salt=crypto.getRandomValues(new Uint8Array(16));
+    deriveKey(p1, salt).then(function(key){
+      var iv=crypto.getRandomValues(new Uint8Array(12));
+      return crypto.subtle.encrypt({name:'AES-GCM', iv:iv}, key, new TextEncoder().encode('docverify')).then(function(ct){
+        localStorage.setItem('rt_docsalt', b64FromBuf(salt.buffer));
+        localStorage.setItem('rt_docverify', b64FromBuf(ct));
+        localStorage.setItem('rt_docverifyiv', b64FromBuf(iv.buffer));
+        docKey=key; showToast('🔐 Dokument-Passwort gesetzt'); cb(true);
+      });
+    }).catch(function(){ alert('Konnte das Passwort nicht einrichten.'); cb(false); });
+  } else {
+    var pass=prompt('Dokument-Passwort eingeben:');
+    if(!pass){ cb(false); return; }
+    var salt2=new Uint8Array(bufFromB64(saltB64));
+    deriveKey(pass, salt2).then(function(key){
+      var iv2=new Uint8Array(bufFromB64(localStorage.getItem('rt_docverifyiv')));
+      return crypto.subtle.decrypt({name:'AES-GCM', iv:iv2}, key, bufFromB64(localStorage.getItem('rt_docverify'))).then(function(pt){
+        if(new TextDecoder().decode(pt)==='docverify'){ docKey=key; cb(true); }
+        else { alert('Falsches Passwort.'); cb(false); }
+      });
+    }).catch(function(){ alert('Falsches Passwort.'); cb(false); });
+  }
+}
+function encryptData(dataUrl){ // -> Promise({iv, data})
+  var iv=crypto.getRandomValues(new Uint8Array(12));
+  return crypto.subtle.encrypt({name:'AES-GCM', iv:iv}, docKey, new TextEncoder().encode(dataUrl)).then(function(ct){
+    return {iv:b64FromBuf(iv.buffer), data:b64FromBuf(ct)};
+  });
+}
+function decryptData(rec){ // -> Promise(dataUrl)
+  var iv=new Uint8Array(bufFromB64(rec.iv));
+  return crypto.subtle.decrypt({name:'AES-GCM', iv:iv}, docKey, bufFromB64(rec.data)).then(function(pt){
+    return new TextDecoder().decode(pt);
+  });
+}
+
+// Dokumente werden LOKAL auf dem Gerät gespeichert (IndexedDB) und mit deinem
+// Passwort VERSCHLÜSSELT. Sie verlassen das Gerät nie und sind ohne Passwort wertlos.
 function handleFiles(files,idx){
   if(!mediaDB){ alert('Speicher wird noch geladen – bitte kurz warten und erneut versuchen.'); return; }
-  var arr=Array.prototype.slice.call(files), total=arr.length, done=0, moved=0, lastTarget=idx;
+  var arr=Array.prototype.slice.call(files), total=arr.length;
   if(total===0) return;
-  function finishUp(){
-    if(moved>0) showToast(moved+' Dokument(e) automatisch zugeordnet');
-    renderStations(); go(lastTarget);
-  }
-  arr.forEach(function(file){
-    var info=classifyDoc(file.name);
-    var det=detectStation(file.name);
-    var target = (det>-1) ? det : idx;   // Smart-Zuordnung nach Dateiname
-    if(det>-1 && det!==idx) moved++;
-    lastTarget=target;
-    var reader=new FileReader();
-    reader.onload=function(ev){
-      try{
-        var rec={station:target,name:file.name,cat:info.cat,icon:info.icon,color:info.color,size:(file.size/1024/1024).toFixed(2)+' MB',type:file.type||'',data:ev.target.result,ts:Date.now()};
-        var tx=mediaDB.transaction('localdocs','readwrite');
-        tx.objectStore('localdocs').add(rec);
-        tx.oncomplete=function(){ done++; if(done===total) finishUp(); };
-        tx.onerror=function(){ done++; if(done===total){ alert('Ein Dokument konnte nicht gespeichert werden (evtl. Speicher voll).'); finishUp(); } };
-      }catch(e){ done++; if(done===total) finishUp(); }
-    };
-    reader.onerror=function(){ done++; if(done===total) finishUp(); };
-    reader.readAsDataURL(file);
+  unlockDocs(function(ok){
+    if(!ok) return;   // Ohne Passwort wird nichts gespeichert
+    var done=0, moved=0, lastTarget=idx;
+    function finishUp(){
+      if(moved>0) showToast(moved+' Dokument(e) automatisch zugeordnet');
+      renderStations(); go(lastTarget);
+    }
+    arr.forEach(function(file){
+      var info=classifyDoc(file.name);
+      var det=detectStation(file.name);
+      var target = (det>-1) ? det : idx;
+      if(det>-1 && det!==idx) moved++;
+      lastTarget=target;
+      var reader=new FileReader();
+      reader.onload=function(ev){
+        encryptData(ev.target.result).then(function(enc){
+          var rec={station:target,name:file.name,cat:info.cat,icon:info.icon,color:info.color,size:(file.size/1024/1024).toFixed(2)+' MB',type:file.type||'',enc:true,iv:enc.iv,data:enc.data,ts:Date.now()};
+          var tx=mediaDB.transaction('localdocs','readwrite');
+          tx.objectStore('localdocs').add(rec);
+          tx.oncomplete=function(){ done++; if(done===total) finishUp(); };
+          tx.onerror=function(){ done++; if(done===total){ alert('Ein Dokument konnte nicht gespeichert werden (evtl. Speicher voll).'); finishUp(); } };
+        }).catch(function(){ done++; if(done===total){ alert('Verschlüsselung fehlgeschlagen.'); finishUp(); } });
+      };
+      reader.onerror=function(){ done++; if(done===total) finishUp(); };
+      reader.readAsDataURL(file);
+    });
   });
 }
 function pdfFallbackHtml(){
@@ -996,9 +1060,9 @@ function renderStations(){
     }
 
     // --- Eigene Dokumente: nur lokal auf dem Gerät (auch große PDFs wie Pass/Visum) ---
-    h+='<div style="font-weight:700;font-size:13px;margin:8px 0 6px">🔒 Meine Dokumente <span style="font-weight:400;color:var(--text-secondary)">(bleiben nur auf diesem Gerät)</span></div>';
+    h+='<div style="font-weight:700;font-size:13px;margin:8px 0 6px">🔒 Meine Dokumente <span style="font-weight:400;color:var(--text-secondary)">(nur auf diesem Gerät · 🔐 passwortverschlüsselt)</span></div>';
     h+='<div class="dropzone" id="dz-'+i+'" ondragover="dzOver(event,'+i+')" ondragleave="dzLeave(event,'+i+')" ondrop="dzDrop(event,'+i+')" onclick="document.getElementById(\'fi-'+i+'\').click()">';
-    h+='<div class="dz-icon">📤</div><div class="dz-main">Dokument hochladen</div><div class="dz-sub">PDF oder Bild · z.B. Reisepass, Visum, Ticket · Auto-Erkennung · wird NICHT ins Internet geladen</div>';
+    h+='<div class="dz-icon">📤</div><div class="dz-main">Dokument hochladen</div><div class="dz-sub">PDF oder Bild · z.B. Reisepass, Visum, Ticket · mit deinem Passwort verschlüsselt · verlässt das Gerät nie</div>';
     h+='<input type="file" id="fi-'+i+'" accept="application/pdf,image/*" multiple style="display:none" onchange="dzInput(event,'+i+')"></div>';
     h+='<div id="mydocs-'+i+'"></div>';
     // Alt-Bestand: früher lokal (localStorage) gespeicherte Dokumente – weiterhin sichtbar
@@ -1028,6 +1092,7 @@ function renderStations(){
       h+='<div class="diary-day-head"><span class="diary-day-title">📅 Tag '+(dd+1)+'</span>';
       if(days.length>1) h+='<button class="diary-day-del" onclick="deleteDiaryDay('+i+',\''+did+'\')">🗑️ Tag löschen</button>';
       h+='</div>';
+      h+='<div class="diary-day-date">🗓️ <input type="date" value="'+(day.date||'')+'" onchange="setDiaryDayDate('+i+',\''+did+'\',this.value)"><span class="diary-day-datetxt" id="diary-daydate-'+i+'-'+did+'">'+(day.date?fmtDate(day.date):'')+'</span></div>';
       h+='<textarea class="notes" id="diary-'+i+'-'+did+'" placeholder="Was hast du an Tag '+(dd+1)+' in '+stop.city+' erlebt?" oninput="saveDiaryDay('+i+',\''+did+'\')">'+(day.text||'')+'</textarea>';
       h+='<div class="notes-saved" id="diary-saved-'+i+'-'+did+'"></div>';
       h+='<div class="diary-upload" onclick="document.getElementById(\'diary-file-'+i+'-'+did+'\').click()">📷 Fotos zu Tag '+(dd+1)+' hinzufügen<input type="file" id="diary-file-'+i+'-'+did+'" accept="image/*" multiple style="display:none" onchange="diaryAddPhotos('+i+',this.files,\''+did+'\')"></div>';
@@ -1085,9 +1150,28 @@ function saveDiaryDay(idx, dayId){
   var st=document.getElementById('diary-saved-'+idx+'-'+dayId);
   if(st){ st.textContent='✓ Gespeichert'; setTimeout(function(){ st.textContent=''; },1500); }
 }
+// ISO-Datum (JJJJ-MM-TT) hübsch formatieren: "Do, 25.09.2026"
+function fmtDate(iso){
+  if(!iso) return '';
+  try{
+    var d=new Date(iso+'T12:00:00'); if(isNaN(d.getTime())) return '';
+    var wd=['So','Mo','Di','Mi','Do','Fr','Sa'][d.getDay()];
+    var dd=('0'+d.getDate()).slice(-2), mm=('0'+(d.getMonth()+1)).slice(-2);
+    return wd+', '+dd+'.'+mm+'.'+d.getFullYear();
+  }catch(e){ return ''; }
+}
+function setDiaryDayDate(idx, dayId, value){
+  var days=ensureDays(idx);
+  for(var k=0;k<days.length;k++){ if(days[k].id===dayId){ days[k].date=value; break; } }
+  saveDiaryDays();
+  var el=document.getElementById('diary-daydate-'+idx+'-'+dayId);
+  if(el) el.textContent=value?fmtDate(value):'';
+}
 function addDiaryDay(idx){
   var days=ensureDays(idx);
-  days.push({id:newDayId(), text:''});
+  var def='', last=days[days.length-1];
+  if(last && last.date){ var d=new Date(last.date+'T12:00:00'); if(!isNaN(d.getTime())){ d.setDate(d.getDate()+1); def=d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2); } }
+  days.push({id:newDayId(), text:'', date:def});
   saveDiaryDays();
   renderStations(); go(idx);
 }
@@ -1354,7 +1438,19 @@ function viewLocalDoc(id){
   if(!mediaDB) return;
   var tx=mediaDB.transaction('localdocs','readonly');
   var req=tx.objectStore('localdocs').get(id);
-  req.onsuccess=function(){ if(req.result) showInViewer(req.result); };
+  req.onsuccess=function(){
+    var rec=req.result; if(!rec) return;
+    if(rec.enc){
+      unlockDocs(function(ok){
+        if(!ok) return;
+        decryptData(rec).then(function(dataUrl){
+          showInViewer({name:rec.name, icon:rec.icon, type:rec.type, data:dataUrl});
+        }).catch(function(){ alert('Konnte das Dokument nicht entschlüsseln (falsches Passwort?).'); });
+      });
+    } else {
+      showInViewer(rec);   // Alt-Bestand (unverschlüsselt)
+    }
+  };
 }
 function deleteLocalDoc(id, idx){
   if(!mediaDB) return;
