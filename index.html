@@ -100,7 +100,8 @@
     .diary-upload { margin-top: 10px; text-align: center; background: var(--accent); color: #fff; padding: 12px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; }
     .diary-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 8px; margin-top: 10px; }
     .diary-thumb { position: relative; }
-    .diary-thumb img { width: 100%; height: 90px; object-fit: cover; border-radius: 8px; cursor: pointer; border: 1px solid var(--border); display: block; }
+    .diary-thumb img, .diary-thumb video { width: 100%; height: 90px; object-fit: cover; border-radius: 8px; cursor: pointer; border: 1px solid var(--border); display: block; background: #000; }
+    .diary-playbadge { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); z-index: 2; background: rgba(0,0,0,.55); color: #fff; width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 15px; pointer-events: none; }
     .diary-del { position: absolute; top: 5px; right: 5px; z-index: 3; background: #dc2626; color: #fff; border: 1.5px solid #fff; border-radius: 8px; font-size: 15px; line-height: 1; padding: 5px 8px; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,.45); }
     .diary-cap { position: absolute; left: 0; right: 0; bottom: 0; background: linear-gradient(transparent, rgba(0,0,0,.75)); color: #fff; font-size: 10px; line-height: 1.2; padding: 10px 5px 4px; border-radius: 0 0 8px 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     a.diary-cap { display: block; cursor: pointer; text-decoration: none; }
@@ -339,7 +340,7 @@ var rate = FALLBACK_RATE;
 //  0 San Francisco (Ankunft)   1 Yosemite        2 Death Valley
 //  3 Bryce Canyon              4 Page, Arizona   5 Grand Canyon
 //  6 Las Vegas                 7 San Diego       8 Los Angeles
-//  9 Santa Barbara            10 Monterey       11 San Francisco (Ende)
+//  9 Pismo Beach              10 Monterey       11 San Francisco (Ende)
 var SHARED_LINKS = {
   // Beispiele — entferne das // und setze deine echten Links ein:
   // 4: [ { name: 'Bootstour Lake Powell', url: 'https://drive.google.com/file/d/XXXX/view' } ],
@@ -372,10 +373,12 @@ function ensureDays(key){
   return diaryDays[key];
 }
 var customStops = JSON.parse(localStorage.getItem('rt_custom')||'[]'); // eigene Zwischenstopps
+var hiddenStops = JSON.parse(localStorage.getItem('rt_hidden')||'[]'); // gelöschte Basis-Reiseziele (Indizes)
+function isHidden(bi){ return hiddenStops.indexOf(bi)>-1; }
 var ROUTE = []; // effektive Reihenfolge aus Basis-Stationen + eigenen Zwischenstopps
 function buildRoute(){
   var route=[];
-  for(var bi=0;bi<STOPS.length;bi++) route.push({key:bi, stop:STOPS[bi]});
+  for(var bi=0;bi<STOPS.length;bi++){ if(isHidden(bi)) continue; route.push({key:bi, stop:STOPS[bi]}); }
   for(var ci=0;ci<customStops.length;ci++){
     var cs=customStops[ci];
     var st={city:cs.name,subtitle:'📔 Eigener Zwischenstopp',icon:cs.icon||'📍',dates:'Zwischenstopp',nights:0,hotel:null,address:cs.name,routeFrom:null,arrival:null,warning:null,timezone:null,weather:null,bookings:[],highlights:[],nextDistance:null,nextTime:null,nextTo:null,_custom:true};
@@ -398,9 +401,9 @@ var STOPS = [
   {city:'Grand Canyon',subtitle:'Das große Naturwunder',dates:'15.07. – 17.07.2026',nights:2,hotel:'Yavapai Lodge',icon:'🏜️',address:'Yavapai Lodge, Grand Canyon Village, AZ 86023',routeFrom:'Page, Arizona',warning:null,timezone:'Arizona hat KEINE Sommerzeit! Uhren ggf. 1 Std. anders als Utah/Nevada.',weather:{icon:'⛅',condition:'Heiß, nachmittags Monsun',tempHigh:34,tempLow:15,humidity:'30%',uv:'9 (Sehr hoch)',tip:'South Rim auf 2.100m — angenehmer als die Wüste. Ab 14 Uhr Monsun-Gewitter möglich! Morgens wandern.'},bookings:[],highlights:[{name:'Mather Point',tipIcon:'🌅',desc:'Der klassische erste Blick in den Grand Canyon',bestTime:'Sonnenaufgang ca. 5:20 Uhr',url:'https://www.nps.gov/grca/planyourvisit/south-rim.htm',urlLabel:'NPS South Rim',navAddress:'Mather Point, Grand Canyon Village, AZ'},{name:'South Rim Trail',tipIcon:'🚶',desc:'Barrierefreier Weg entlang der Canyon-Kante',bestTime:'Morgens/spätnachmittags',navAddress:'South Rim Trail, Grand Canyon, AZ'},{name:'Desert View Watchtower',tipIcon:'🏰',desc:'360° Panorama vom historischen Turm',bestTime:'Vormittags',navAddress:'Desert View Watchtower, Grand Canyon, AZ'}],nextDistance:450,nextTime:'ca. 4,5 – 5 Std.',nextTo:'Las Vegas'},
   {city:'Las Vegas',subtitle:'Ed Sheeran, Route 66 & Strip',dates:'17.07. – 20.07.2026',nights:3,hotel:'The Venetian / Wynn',icon:'🎰',address:'The Venetian Resort, 3355 S Las Vegas Blvd, Las Vegas, NV 89109',routeFrom:'Grand Canyon',warning:null,timezone:null,weather:{icon:'🔥',condition:'Sehr heiß & sonnig',tempHigh:42,tempLow:28,humidity:'10%',uv:'11+ (Extrem)',tip:'Draußen extrem heiß — Sightseeing morgens/abends! Tagsüber klimatisierte Casinos nutzen. Fürs Ed-Sheeran-Konzert: Wasser!'},bookings:[{title:'Ed Sheeran — Allegiant Stadium',icon:'🎸',price:null,details:['Datum: 18.07.2026, 17:30 Uhr','Venue: Allegiant Stadium','4 Tickets — Section Club C112, Row 32','Zustellung: Mobile Transfer','GoTickets #5485985'],bookingWarning:'Prüft vor dem Konzert ob die Tickets in eurer Wallet/App sind!'}],highlights:[{name:'Route 66 — Kingman & Seligman',tipIcon:'🛣️',desc:'Nostalgische Route-66-Orte auf dem Weg',bestTime:'Auf der Fahrt einplanen',navAddress:'Seligman, AZ'},{name:'Ed Sheeran Konzert',tipIcon:'🎸',desc:'18.07. Allegiant Stadium — Club C112, Row 32',bestTime:'18.07.2026, 17:30 Uhr',navAddress:'Allegiant Stadium, Las Vegas, NV'},{name:'Las Vegas Strip',tipIcon:'🌃',desc:'Bellagio Fountains, Venetian, Wynn',bestTime:'Ab 20 Uhr',navAddress:'Las Vegas Strip, NV'},{name:'Fremont Street',tipIcon:'🎆',desc:'Das alte Vegas — überdachte Lichtshow',bestTime:'Ab 21 Uhr',navAddress:'Fremont Street Experience, Las Vegas, NV'}],nextDistance:530,nextTime:'ca. 5 – 5,5 Std.',nextTo:'San Diego'},
   {city:'San Diego',subtitle:'Sonne, Strand & La Jolla',dates:'20.07. – 23.07.2026',nights:3,hotel:'Manchester Grand Hyatt',icon:'🏖️',address:'Manchester Grand Hyatt, 1 Market Pl, San Diego, CA 92101',routeFrom:'Las Vegas',warning:null,timezone:null,weather:{icon:'☀️',condition:'Sonnig & angenehm',tempHigh:26,tempLow:19,humidity:'65%',uv:'8 (Hoch)',tip:'Perfektes Strandwetter! Morgens leichter Küstennebel. Sonnenschutz am Strand nicht vergessen.'},bookings:[],highlights:[{name:'La Jolla Cove',tipIcon:'🦭',desc:'Malerische Bucht mit Seelöwen — Schnorcheln',bestTime:'Vormittags bei ruhiger See',navAddress:'La Jolla Cove, San Diego, CA'},{name:'Balboa Park & Zoo',tipIcon:'🌺',desc:'Riesiger Stadtpark mit weltberühmtem Zoo',bestTime:'Ganzer Tag',navAddress:'Balboa Park, San Diego, CA'},{name:'Gaslamp Quarter',tipIcon:'🍷',desc:'Historisches Viertel mit Nachtleben',bestTime:'Abends ab 18 Uhr',navAddress:'Gaslamp Quarter, San Diego, CA'}],nextDistance:200,nextTime:'ca. 2 – 2,5 Std.',nextTo:'Los Angeles'},
-  {city:'Los Angeles',subtitle:'Santa Monica & Strand',dates:'23.07. – 24.07.2026',nights:1,hotel:'Loews Santa Monica',icon:'🌴',address:'Loews Santa Monica Beach Hotel, 1700 Ocean Ave, Santa Monica, CA',routeFrom:'San Diego',warning:null,timezone:null,weather:{icon:'🌤️',condition:'Warm & sonnig',tempHigh:28,tempLow:18,humidity:'60%',uv:'8 (Hoch)',tip:'Santa Monica ist dank Meeresbrise kühler als Downtown LA. Abends leichte Jacke.'},bookings:[],highlights:[{name:'Santa Monica Pier',tipIcon:'🎡',desc:'Das Ende der Route 66 — Riesenrad, Strand',bestTime:'Sonnenuntergang',navAddress:'Santa Monica Pier, CA'},{name:'Venice Beach',tipIcon:'🛹',desc:'Boardwalk, Skatepark, Muscle Beach',bestTime:'Nachmittags',navAddress:'Venice Beach Boardwalk, CA'}],nextDistance:150,nextTime:'ca. 1,5 – 2 Std.',nextTo:'Santa Barbara'},
-  {city:'Santa Barbara',subtitle:'Amerikanische Riviera',dates:'24.07. – 27.07.2026',nights:3,hotel:'Harbor View Inn',icon:'🏝️',address:'Harbor View Inn, 28 W Cabrillo Blvd, Santa Barbara, CA',routeFrom:'Los Angeles',warning:null,timezone:null,weather:{icon:'☀️',condition:'Sonnig & mediterran',tempHigh:25,tempLow:16,humidity:'55%',uv:'7 (Hoch)',tip:'Herrliches mediterranes Klima! Perfekt für Strand und Spaziergänge. Abends leichte Brise.'},bookings:[],highlights:[{name:'Stearns Wharf',tipIcon:'🌅',desc:'Älteste Holzpier Kaliforniens',bestTime:'Sonnenuntergang',navAddress:'Stearns Wharf, Santa Barbara, CA'},{name:'East Beach',tipIcon:'🏖️',desc:'Wunderschöne Sandstrände',bestTime:'Ganzer Tag',navAddress:'East Beach, Santa Barbara, CA'},{name:'Old Mission Santa Barbara',tipIcon:'⛪',desc:"Historische Mission von 1786",bestTime:'Vormittags',navAddress:'Old Mission Santa Barbara, CA'},{name:'Funk Zone',tipIcon:'🍷',desc:'Trendiges Viertel mit Weinkellereien',bestTime:'Nachmittags',navAddress:'Funk Zone, Santa Barbara, CA'}],nextDistance:380,nextTime:'ca. 4 – 4,5 Std. (Highway 1!)',nextTo:'Monterey'},
-  {city:'Monterey',subtitle:'Highway 1 & Küste',dates:'27.07. – 28.07.2026',nights:1,hotel:'Monterey Plaza Hotel',icon:'🐋',address:'Monterey Plaza Hotel, 400 Cannery Row, Monterey, CA 93940',routeFrom:'Santa Barbara',warning:null,timezone:null,weather:{icon:'🌫️',condition:'Kühl & nebelig',tempHigh:20,tempLow:12,humidity:'80%',uv:'5 (Mittel)',tip:'Monterey ist im Juli oft nebelig und kühl — warme Jacke! Auf Highway 1 kann Nebel die Sicht einschränken.'},bookings:[],highlights:[{name:'Highway 1 / Big Sur',tipIcon:'🛤️',desc:'Bixby Bridge, Big Sur — atemberaubende Küstenstraße',bestTime:'Tagsüber, mehrere Stopps',navAddress:'Bixby Bridge, Big Sur, CA'},{name:'Monterey Bay Aquarium',tipIcon:'🦦',desc:'Eines der besten Aquarien der Welt — Seeotter!',bestTime:'Vormittags',url:'https://www.montereybayaquarium.org',urlLabel:'Tickets & Info',navAddress:'Monterey Bay Aquarium, Monterey, CA'},{name:'17-Mile Drive',tipIcon:'🌲',desc:'Privatstraße durch Pebble Beach — Lone Cypress',bestTime:'Nachmittags',navAddress:'17-Mile Drive, Pebble Beach, CA'}],nextDistance:190,nextTime:'ca. 2 – 2,5 Std.',nextTo:'San Francisco'},
+  {city:'Los Angeles',subtitle:'Santa Monica & Strand',dates:'23.07. – 24.07.2026',nights:1,hotel:'Loews Santa Monica',icon:'🌴',address:'Loews Santa Monica Beach Hotel, 1700 Ocean Ave, Santa Monica, CA',routeFrom:'San Diego',warning:null,timezone:null,weather:{icon:'🌤️',condition:'Warm & sonnig',tempHigh:28,tempLow:18,humidity:'60%',uv:'8 (Hoch)',tip:'Santa Monica ist dank Meeresbrise kühler als Downtown LA. Abends leichte Jacke.'},bookings:[],highlights:[{name:'Santa Monica Pier',tipIcon:'🎡',desc:'Das Ende der Route 66 — Riesenrad, Strand',bestTime:'Sonnenuntergang',navAddress:'Santa Monica Pier, CA'},{name:'Venice Beach',tipIcon:'🛹',desc:'Boardwalk, Skatepark, Muscle Beach',bestTime:'Nachmittags',navAddress:'Venice Beach Boardwalk, CA'}],nextDistance:300,nextTime:'ca. 3 – 3,5 Std.',nextTo:'Pismo Beach'},
+  {city:'Pismo Beach',subtitle:'Kalifornische Zentralküste',dates:'24.07. – 27.07.2026',nights:3,hotel:'The Cliffs Hotel & Spa',icon:'🏖️',address:'The Cliffs Hotel & Spa, 2757 Shell Beach Rd, Pismo Beach, CA 93449',routeFrom:'Los Angeles',warning:null,timezone:null,weather:{icon:'☀️',condition:'Sonnig & mild an der Küste',tempHigh:22,tempLow:13,humidity:'70%',uv:'7 (Hoch)',tip:'Angenehmes Küstenklima! Morgens oft Küstennebel, der bis Mittag aufreißt. Nachmittags frische Meeresbrise — leichte Jacke.'},bookings:[],highlights:[{name:'Pismo Beach Pier',tipIcon:'🌅',desc:'Klassischer Holzsteg mitten im Ort — Sonnenuntergang & Strandpromenade',bestTime:'Sonnenuntergang',navAddress:'Pismo Beach Pier, Pismo Beach, CA'},{name:'Oceano Dunes',tipIcon:'🏜️',desc:'Einzige kalifornische Düne, auf der man am Strand fahren darf',bestTime:'Vormittags',navAddress:'Oceano Dunes SVRA, Oceano, CA'},{name:'Dinosaur Caves Park',tipIcon:'🌊',desc:'Klippen-Park mit Aussicht & Wegen entlang der Steilküste',bestTime:'Nachmittags',navAddress:'Dinosaur Caves Park, Pismo Beach, CA'},{name:'Avila Beach',tipIcon:'⛱️',desc:'Malerischer Badeort mit Pier & Thermalquellen in der Nähe',bestTime:'Ganzer Tag',navAddress:'Avila Beach, CA'}],nextDistance:220,nextTime:'ca. 2,5 – 3 Std. (Highway 1!)',nextTo:'Monterey'},
+  {city:'Monterey',subtitle:'Highway 1 & Küste',dates:'27.07. – 28.07.2026',nights:1,hotel:'Monterey Plaza Hotel',icon:'🐋',address:'Monterey Plaza Hotel, 400 Cannery Row, Monterey, CA 93940',routeFrom:'Pismo Beach',warning:null,timezone:null,weather:{icon:'🌫️',condition:'Kühl & nebelig',tempHigh:20,tempLow:12,humidity:'80%',uv:'5 (Mittel)',tip:'Monterey ist im Juli oft nebelig und kühl — warme Jacke! Auf Highway 1 kann Nebel die Sicht einschränken.'},bookings:[],highlights:[{name:'Highway 1 / Big Sur',tipIcon:'🛤️',desc:'Bixby Bridge, Big Sur — atemberaubende Küstenstraße',bestTime:'Tagsüber, mehrere Stopps',navAddress:'Bixby Bridge, Big Sur, CA'},{name:'Monterey Bay Aquarium',tipIcon:'🦦',desc:'Eines der besten Aquarien der Welt — Seeotter!',bestTime:'Vormittags',url:'https://www.montereybayaquarium.org',urlLabel:'Tickets & Info',navAddress:'Monterey Bay Aquarium, Monterey, CA'},{name:'17-Mile Drive',tipIcon:'🌲',desc:'Privatstraße durch Pebble Beach — Lone Cypress',bestTime:'Nachmittags',navAddress:'17-Mile Drive, Pebble Beach, CA'}],nextDistance:190,nextTime:'ca. 2 – 2,5 Std.',nextTo:'San Francisco'},
   {city:'San Francisco',subtitle:'Die Stadt an der Bucht',dates:'28.07. – 01.08.2026',nights:4,hotel:'Hotel Caza / Four Seasons',icon:'🌉',address:'Hotel Caza, 222 Mason St, San Francisco, CA 94102',routeFrom:'Monterey',warning:null,timezone:null,weather:{icon:'🌫️',condition:'Nebelig bis mild',tempHigh:22,tempLow:13,humidity:'75%',uv:'6 (Mittel)',tip:'Karl the Fog! SF ist Ende Juli oft nebelig und kühl. Schichten — auf der Golden Gate Bridge windig und kalt.'},bookings:[{title:'Alcatraz Nachttour',icon:'🏚️',price:null,details:['Do. 30.07.2026 um 17:45 Uhr','Dauer: 3 Stunden','4 Erwachsene','Buchung: GYG32L552GZQ'],bookingWarning:'Am selben Tag Mietwagen am SFO abgeben — Puffer einplanen!'},{title:'Mietwagen-Rückgabe',icon:'🚗',price:null,details:['Rückgabe: 30.07.2026, 17:00 Uhr','SFO Airport','Best.: 2116424053'],bookingWarning:'Noch 2 Nächte ohne Auto — fußläufig / Uber!'}],highlights:[{name:'Alcatraz Nachttour',tipIcon:'🏚️',desc:'Abendtour auf die Gefängnisinsel — Fähre ab Pier 33',bestTime:'30.07., Fähre 17:45 Uhr (gebucht)',navAddress:'Pier 33, Alcatraz Landing, San Francisco, CA'},{name:'Golden Gate Bridge',tipIcon:'🌉',desc:'DAS Wahrzeichen — zu Fuß ca. 30 Min',bestTime:'Vormittags bei klarer Sicht',navAddress:'Golden Gate Bridge Welcome Center, San Francisco, CA'},{name:"Fisherman's Wharf",tipIcon:'🦁',desc:'Seelöwen am Pier 39, Clam Chowder',bestTime:'Mittags',navAddress:"Fisherman's Wharf, San Francisco, CA"},{name:'Cable Cars & Lombard Street',tipIcon:'🚋',desc:'Legendäre Straßenbahn & krummste Straße',bestTime:'Vormittags',navAddress:'Lombard Street, San Francisco, CA'},{name:'Chinatown',tipIcon:'🏮',desc:'Ältestes Chinatown Nordamerikas',bestTime:'Abends für Dim Sum',navAddress:'Chinatown, San Francisco, CA'}],nextDistance:null,nextTime:null,nextTo:null}
 ];
 
@@ -432,7 +435,7 @@ function detectStation(filename){
     {idx:5, keys:['grand canyon','yavapai','mather']},
     {idx:7, keys:['san diego','manchester','la jolla','balboa','gaslamp']},
     {idx:8, keys:['los angeles','loews','santa monica','venice']},
-    {idx:9, keys:['santa barbara','harbor view','stearns','funk zone']},
+    {idx:9, keys:['pismo','pismo beach','cliffs hotel','oceano','shell beach','avila']},
     {idx:10, keys:['monterey','big sur','cannery','17-mile','aquarium','pebble']},
     {idx:0, keys:['enterprise','mietwagen','rental','sfo','flug','flight','boarding']}
   ];
@@ -498,10 +501,21 @@ function saveStop(){
   refreshRoute(); renderStats(); renderQuickBar(); renderStations(); go(key);
 }
 function deleteStop(key){
-  if(!confirm('Diesen Zwischenstopp inkl. Notizen, Tagebuch & Fotos löschen?')) return;
-  customStops=customStops.filter(function(c){ return c.key!==key; });
+  var isCust=false;
+  for(var c=0;c<customStops.length;c++){ if(customStops[c].key===key){ isCust=true; break; } }
+  var msg = isCust
+    ? 'Diesen Zwischenstopp inkl. Notizen, Tagebuch & Fotos löschen?'
+    : 'Dieses Reiseziel inkl. Notizen, Tagebuch & Fotos aus der App entfernen?';
+  if(!confirm(msg)) return;
   try{
-    localStorage.setItem('rt_custom',JSON.stringify(customStops));
+    if(isCust){
+      customStops=customStops.filter(function(cs){ return cs.key!==key; });
+      localStorage.setItem('rt_custom',JSON.stringify(customStops));
+    } else {
+      if(hiddenStops.indexOf(key)===-1) hiddenStops.push(key);
+      localStorage.setItem('rt_hidden',JSON.stringify(hiddenStops));
+    }
+    // Zugehörige Daten entfernen (gilt für beide Arten)
     delete notes[key]; delete diary[key]; delete diaryDays[key]; delete docs[key]; delete links[key]; delete doneStations[key];
     localStorage.setItem('rt_notes',JSON.stringify(notes));
     localStorage.setItem('rt_diary',JSON.stringify(diary));
@@ -513,8 +527,11 @@ function deleteStop(key){
   if(mediaDB){ try{
     var idx=mediaDB.transaction('photos','readonly').objectStore('photos').index('station').getAllKeys(key);
     idx.onsuccess=function(){ var ids=idx.result||[]; if(ids.length){ var tx=mediaDB.transaction('photos','readwrite'); for(var n=0;n<ids.length;n++) tx.objectStore('photos').delete(ids[n]); } };
+    var idx2=mediaDB.transaction('localdocs','readonly').objectStore('localdocs').index('station').getAllKeys(key);
+    idx2.onsuccess=function(){ var ids2=idx2.result||[]; if(ids2.length){ var tx2=mediaDB.transaction('localdocs','readwrite'); for(var m=0;m<ids2.length;m++) tx2.objectStore('localdocs').delete(ids2[m]); } };
   }catch(e){} }
-  refreshRoute(); renderStats(); renderQuickBar(); renderStations(); go(0);
+  refreshRoute(); renderStats(); renderQuickBar(); renderStations();
+  go(ROUTE.length?ROUTE[0].key:0);
 }
 
 // ===== CURRENCY =====
@@ -754,12 +771,15 @@ function showInViewer(d){
   var op=document.getElementById('docOpen');
   var src = d.url ? d.url : (d.data||'');   // verlinkte Datei ODER eingebettete Daten
   var type = d.type || '';
-  var isImg = (type.indexOf('image')>-1) || src.indexOf('image/')>-1 || /\.(png|jpe?g|gif|webp|heic)$/i.test(src);
+  var isVideo = (type.indexOf('video')>-1) || src.indexOf('data:video/')>-1 || /\.(mp4|mov|webm|m4v|ogg|3gp)$/i.test(src);
+  var isImg = !isVideo && ((type.indexOf('image')>-1) || src.indexOf('image/')>-1 || /\.(png|jpe?g|gif|webp|heic)$/i.test(src));
   var isPdf = (type.indexOf('pdf')>-1) || src.indexOf('application/pdf')>-1 || /\.pdf$/i.test(src);
   dl.href=src; dl.download=d.name;
   op.href=src;
   document.getElementById('docModal').classList.add('open');
-  if(isImg){
+  if(isVideo){
+    view.innerHTML='<video src="'+src+'" controls autoplay playsinline style="max-width:100%;max-height:72vh;display:block;margin:0 auto;border-radius:8px;background:#000"></video>';
+  } else if(isImg){
     view.innerHTML='<img src="'+src+'" alt="'+d.name+'">';
   } else if(isPdf){
     view.innerHTML='<p style="color:var(--text-secondary);font-size:13px;text-align:center;padding:20px">PDF wird geladen…</p>';
@@ -1095,7 +1115,7 @@ function renderStations(){
       h+='<div class="diary-day-date">🗓️ <input type="date" value="'+(day.date||'')+'" onchange="setDiaryDayDate('+i+',\''+did+'\',this.value)"><span class="diary-day-datetxt" id="diary-daydate-'+i+'-'+did+'">'+(day.date?fmtDate(day.date):'')+'</span></div>';
       h+='<textarea class="notes" id="diary-'+i+'-'+did+'" placeholder="Was hast du an Tag '+(dd+1)+' in '+stop.city+' erlebt?" oninput="saveDiaryDay('+i+',\''+did+'\')">'+(day.text||'')+'</textarea>';
       h+='<div class="notes-saved" id="diary-saved-'+i+'-'+did+'"></div>';
-      h+='<div class="diary-upload" onclick="document.getElementById(\'diary-file-'+i+'-'+did+'\').click()">📷 Fotos zu Tag '+(dd+1)+' hinzufügen<input type="file" id="diary-file-'+i+'-'+did+'" accept="image/*" multiple style="display:none" onchange="diaryAddPhotos('+i+',this.files,\''+did+'\')"></div>';
+      h+='<div class="diary-upload" onclick="document.getElementById(\'diary-file-'+i+'-'+did+'\').click()">📷 Fotos / 🎬 Videos zu Tag '+(dd+1)+' hinzufügen<input type="file" id="diary-file-'+i+'-'+did+'" accept="image/*,video/*" multiple style="display:none" onchange="diaryAddPhotos('+i+',this.files,\''+did+'\')"></div>';
       h+='<div class="diary-gallery" id="diary-photos-'+i+'-'+did+'"></div>';
       h+='</div>';
     }
@@ -1108,10 +1128,8 @@ function renderStations(){
       h+='<div style="background:var(--bg);padding:12px;margin-top:14px;border-radius:10px;font-size:13px">⏭️ <strong>Nächste Etappe — '+stop.nextTo+':</strong> '+stop.nextDistance+' km · '+stop.nextTime+'</div>';
     }
 
-    // eigenen Zwischenstopp löschen
-    if(isCustom){
-      h+='<button class="markdone" style="background:#dc2626;color:#fff;margin-bottom:8px" onclick="deleteStop('+i+')">🗑️ Diesen Zwischenstopp löschen</button>';
-    }
+    // Reiseziel / Zwischenstopp löschen
+    h+='<button class="markdone" style="background:#dc2626;color:#fff;margin-bottom:8px" onclick="deleteStop('+i+')">🗑️ '+(isCustom?'Diesen Zwischenstopp löschen':'Dieses Reiseziel löschen')+'</button>';
 
     // Mark done
     h+='<button class="markdone '+(doneStations[i]?'isdone':'todo')+'" onclick="markDone('+i+')">'+(doneStations[i]?'✓ Als erledigt markiert (rückgängig)':'Station als erledigt markieren')+'</button>';
@@ -1317,13 +1335,38 @@ function diaryAddPhotos(idx, files, dayId){
   var arr=Array.prototype.slice.call(files), done=0, total=arr.length;
   if(total===0) return;
   arr.forEach(function(file){
-    if(!file.type || file.type.indexOf('image')===-1){ done++; if(done===total) loadDiaryPhotos(idx); return; }
+    var ftype=file.type||'';
+    var isVideo=ftype.indexOf('video')===0;
+    var isImage=ftype.indexOf('image')===0;
+    if(!isVideo && !isImage){ done++; if(done===total) loadDiaryPhotos(idx); return; }
+
+    // --- VIDEO: unkomprimiert speichern (kein EXIF/Standort) ---
+    if(isVideo){
+      if(file.size && file.size > 200*1024*1024){
+        alert('Dieses Video ist sehr groß ('+Math.round(file.size/1024/1024)+' MB) und passt evtl. nicht in den Gerätespeicher. Tipp: kürzeres/kleineres Video verwenden.');
+      }
+      var vreader=new FileReader();
+      vreader.onload=function(ev){
+        try{
+          var vrec={station:idx,day:dayId,name:file.name,ts:Date.now(),data:ev.target.result,mime:ftype||'video/mp4',kind:'video'};
+          var vtx=mediaDB.transaction('photos','readwrite');
+          vtx.objectStore('photos').add(vrec);
+          vtx.oncomplete=function(){ showToast('🎬 Video gespeichert'); done++; if(done===total) loadDiaryPhotos(idx); };
+          vtx.onerror=function(){ alert('Video konnte nicht gespeichert werden (evtl. zu groß).'); done++; if(done===total) loadDiaryPhotos(idx); };
+        }catch(e){ done++; if(done===total) loadDiaryPhotos(idx); }
+      };
+      vreader.onerror=function(){ done++; if(done===total) loadDiaryPhotos(idx); };
+      vreader.readAsDataURL(file);
+      return;
+    }
+
+    // --- BILD: komprimieren + Standort aus EXIF ---
     var dataUrl=null, gps=null, place=null, ready=0;
     function finish(){
       ready++;
       if(ready<2) return; // erst speichern, wenn Bild komprimiert UND Standort geprüft
       try{
-        var rec={station:idx,day:dayId,name:file.name,ts:Date.now(),data:dataUrl};
+        var rec={station:idx,day:dayId,name:file.name,ts:Date.now(),data:dataUrl,mime:'image/jpeg',kind:'photo'};
         if(gps){ rec.lat=gps.lat; rec.lon=gps.lon; }
         if(place) rec.place=place;
         var tx=mediaDB.transaction('photos','readwrite');
@@ -1343,6 +1386,7 @@ function diaryAddPhotos(idx, files, dayId){
 function diaryThumbsHtml(items, idx){
   var html='';
   for(var k=0;k<items.length;k++){
+    var isVid = items[k].kind==='video' || (items[k].mime||'').indexOf('video')===0;
     var lat=items[k].lat, lon=items[k].lon, hasGeo=(lat!=null && lon!=null);
     var cap='';
     if(items[k].place) cap='📍 '+items[k].place;
@@ -1355,7 +1399,10 @@ function diaryThumbsHtml(items, idx){
     } else if(cap){
       capHtml='<div class="diary-cap" title="'+cap.replace(/"/g,'&quot;')+'">'+cap+'</div>';
     }
-    html+='<div class="diary-thumb"><img src="'+items[k].data+'" onclick="viewDiaryPhoto('+items[k].id+')"><button class="diary-del" onclick="deleteDiaryPhoto('+items[k].id+','+idx+')">🗑️</button>'+capHtml+'</div>';
+    var media = isVid
+      ? '<video src="'+items[k].data+'" preload="metadata" muted playsinline onclick="viewDiaryPhoto('+items[k].id+')"></video><div class="diary-playbadge">▶</div>'
+      : '<img src="'+items[k].data+'" onclick="viewDiaryPhoto('+items[k].id+')">';
+    html+='<div class="diary-thumb">'+media+'<button class="diary-del" onclick="deleteDiaryPhoto('+items[k].id+','+idx+')">🗑️</button>'+capHtml+'</div>';
   }
   return html;
 }
@@ -1390,12 +1437,14 @@ function viewDiaryPhoto(id){
   var req=tx.objectStore('photos').get(id);
   req.onsuccess=function(){
     var rec=req.result; if(!rec) return;
-    showInViewer({name:rec.name||'Foto',type:'image/jpeg',data:rec.data});
+    var isVid = rec.kind==='video' || (rec.mime||'').indexOf('video')===0;
+    showInViewer({name:rec.name||(isVid?'Video':'Foto'),type:rec.mime||'image/jpeg',data:rec.data});
     var del=document.getElementById('docDelete');
     if(del){
       del.style.display='';
+      del.textContent = isVid ? '🗑️ Video löschen' : '🗑️ Foto löschen';
       del.onclick=function(){
-        if(!confirm('Dieses Foto wirklich löschen?')) return;
+        if(!confirm(isVid?'Dieses Video wirklich löschen?':'Dieses Foto wirklich löschen?')) return;
         var t2=mediaDB.transaction('photos','readwrite');
         t2.objectStore('photos').delete(id);
         t2.oncomplete=function(){ closeModal('docModal'); loadDiaryPhotos(rec.station); };
