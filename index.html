@@ -165,6 +165,34 @@
     .doc-modal-foot { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 14px; border-top: 1px solid var(--border); background: var(--card-bg); }
     .doc-action { flex: 1; min-width: 130px; text-align: center; background: var(--accent); color: #fff; text-decoration: none; padding: 12px; border-radius: 8px; font-size: 14px; font-weight: 600; border: none; cursor: pointer; }
     .doc-action.secondary { background: var(--bg); color: var(--text); border: 1px solid var(--border); }
+    /* ===== Tagebuch-Druckansicht ===== */
+    #diaryPrintOverlay { position: fixed; inset: 0; z-index: 3000; background: #f3f4f6; overflow: auto; -webkit-overflow-scrolling: touch; }
+    #diaryPrintOverlay .print-toolbar { position: sticky; top: 0; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; padding: 12px; background: #1e293b; box-shadow: 0 2px 8px rgba(0,0,0,.25); }
+    #diaryPrintOverlay .print-toolbar button { border: none; border-radius: 10px; padding: 12px 18px; font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit; }
+    #diaryPrintOverlay .print-toolbar .pt-print { background: #f97316; color: #fff; }
+    #diaryPrintOverlay .print-toolbar .pt-close { background: #475569; color: #fff; }
+    #diaryPrintOverlay .print-page { max-width: 820px; margin: 20px auto; background: #fff; color: #111; padding: 40px 46px; box-shadow: 0 4px 20px rgba(0,0,0,.15); border-radius: 6px; }
+    #diaryPrintOverlay h1 { font-size: 26px; margin: 0 0 4px; color: #b45309; }
+    #diaryPrintOverlay .print-sub { color: #666; font-size: 14px; margin: 0 0 24px; }
+    #diaryPrintOverlay .print-station { margin: 0 0 28px; page-break-inside: auto; }
+    #diaryPrintOverlay .print-station-h { font-size: 20px; margin: 24px 0 10px; padding-bottom: 6px; border-bottom: 2px solid #f97316; color: #7c2d12; }
+    #diaryPrintOverlay .print-day { margin: 0 0 18px; page-break-inside: avoid; }
+    #diaryPrintOverlay .print-day-h { font-size: 15px; font-weight: 700; color: #1e3a8a; margin: 0 0 6px; }
+    #diaryPrintOverlay .print-text { white-space: pre-wrap; font-size: 14px; line-height: 1.55; margin: 0 0 10px; }
+    #diaryPrintOverlay .print-text.empty { color: #999; font-style: italic; }
+    #diaryPrintOverlay .print-photos { display: flex; flex-wrap: wrap; gap: 8px; }
+    #diaryPrintOverlay .print-photos figure { margin: 0; width: 240px; page-break-inside: avoid; }
+    #diaryPrintOverlay .print-photos img { width: 100%; border-radius: 6px; display: block; }
+    #diaryPrintOverlay .print-photos figcaption { font-size: 11px; color: #555; margin-top: 3px; }
+    #diaryPrintOverlay .print-video-note { font-size: 12px; color: #92400e; background: #fef3c7; border-radius: 6px; padding: 6px 10px; margin: 4px 0; }
+    #diaryPrintOverlay .print-empty { color: #999; font-style: italic; font-size: 15px; }
+    @media print {
+      body { visibility: hidden; }
+      #diaryPrintOverlay, #diaryPrintOverlay * { visibility: visible; }
+      #diaryPrintOverlay { position: absolute; inset: auto; left: 0; top: 0; width: 100%; background: #fff; overflow: visible; }
+      #diaryPrintOverlay .print-toolbar { display: none !important; }
+      #diaryPrintOverlay .print-page { max-width: none; margin: 0; box-shadow: none; border-radius: 0; padding: 0 6mm; }
+    }
   </style>
 </head>
 <body>
@@ -191,6 +219,7 @@
       <div class="header-right">
         <button class="hbtn" onclick="openAllDocs()">📎 Dokumente</button>
         <button class="hbtn" onclick="openAddStop()">➕ Stopp</button>
+        <button class="hbtn" onclick="printDiary()">🖨️ Tagebuch</button>
         <button class="hbtn" onclick="openConverter()">💱 Währung</button>
         <button class="hbtn" style="background:#dc2626" onclick="openEmergency()">🆘 Notfall</button>
         <button class="hbtn drive" onclick="openDrive()">📁 Drive</button>
@@ -1460,6 +1489,91 @@ function deleteDiaryPhoto(id, idx){
   tx.oncomplete=function(){ loadDiaryPhotos(idx); };
 }
 function loadAllDiaryPhotos(){ for(var r=0;r<ROUTE.length;r++) loadDiaryPhotos(ROUTE[r].key); }
+
+// ===== TAGEBUCH DRUCKEN / ALS PDF EXPORTIEREN =====
+function htmlEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function printDiary(){
+  refreshRoute();
+  if(!mediaDB){ buildDiaryPrint({}); return; }
+  try{
+    var tx=mediaDB.transaction('photos','readonly');
+    var req=tx.objectStore('photos').getAll();
+    req.onsuccess=function(){
+      var all=req.result||[], byStation={};
+      for(var k=0;k<all.length;k++){
+        var it=all[k], s=it.station;
+        (byStation[s]=byStation[s]||[]).push(it);
+      }
+      buildDiaryPrint(byStation);
+    };
+    req.onerror=function(){ buildDiaryPrint({}); };
+  }catch(e){ buildDiaryPrint({}); }
+}
+function buildDiaryPrint(photosByStation){
+  var today=fmtDate(new Date().toISOString().slice(0,10));
+  var h='';
+  h+='<div class="print-toolbar no-print">';
+  h+='<button class="pt-print" onclick="window.print()">🖨️ Drucken / Als PDF speichern</button>';
+  h+='<button class="pt-close" onclick="closeDiaryPrint()">✕ Schließen</button>';
+  h+='</div>';
+  h+='<div class="print-page">';
+  h+='<h1>📔 Mein Reisetagebuch</h1>';
+  h+='<div class="print-sub">'+htmlEsc(document.title)+' · erstellt am '+today+'</div>';
+  var anyContent=false;
+  for(var r=0;r<ROUTE.length;r++){
+    var key=ROUTE[r].key, stop=ROUTE[r].stop;
+    var days=(diaryDays[key]&&diaryDays[key].length)?diaryDays[key]:null;
+    var photos=photosByStation[key]||[];
+    // gültige Tage bestimmen; verwaiste Fotos dem ersten Tag zuordnen
+    var validIds={}; if(days){ for(var v=0;v<days.length;v++) validIds[days[v].id]=true; }
+    var firstId=days?days[0].id:'_';
+    var photosByDay={};
+    for(var p=0;p<photos.length;p++){
+      var dId=photos[p].day; if(!dId || !validIds[dId]) dId=firstId;
+      (photosByDay[dId]=photosByDay[dId]||[]).push(photos[p]);
+    }
+    // Prüfen ob diese Station Inhalt hat (Text oder Fotos)
+    var stationHas=false;
+    if(days){ for(var d0=0;d0<days.length;d0++){ if((days[d0].text&&days[d0].text.trim())||(photosByDay[days[d0].id]&&photosByDay[days[d0].id].length)){ stationHas=true; break; } } }
+    if(!days && photos.length){ stationHas=true; }
+    if(!stationHas) continue;
+    anyContent=true;
+    h+='<div class="print-station"><div class="print-station-h">'+htmlEsc((stop.icon||'📍')+' '+stop.city)+'</div>';
+    var dayList=days||[{id:firstId,text:'',date:''}];
+    for(var dd=0;dd<dayList.length;dd++){
+      var day=dayList[dd], dphotos=photosByDay[day.id]||[];
+      var txt=(day.text||'').trim();
+      if(!txt && !dphotos.length) continue;
+      var dateStr=day.date?(' — '+fmtDate(day.date)):'';
+      h+='<div class="print-day"><div class="print-day-h">📅 Tag '+(dd+1)+dateStr+'</div>';
+      if(txt) h+='<div class="print-text">'+htmlEsc(txt)+'</div>';
+      var imgs='', vids=0;
+      for(var q=0;q<dphotos.length;q++){
+        var rec=dphotos[q];
+        var isVid=rec.kind==='video'||(rec.mime||'').indexOf('video')===0;
+        if(isVid){ vids++; continue; }
+        var cap=rec.place?('📍 '+rec.place):'';
+        imgs+='<figure><img src="'+rec.data+'">'+(cap?'<figcaption>'+htmlEsc(cap)+'</figcaption>':'')+'</figure>';
+      }
+      if(imgs) h+='<div class="print-photos">'+imgs+'</div>';
+      if(vids) h+='<div class="print-video-note">🎬 '+vids+' Video'+(vids>1?'s':'')+' an diesem Tag – Videos können nicht gedruckt werden (nur in der App abspielbar).</div>';
+      h+='</div>';
+    }
+    h+='</div>';
+  }
+  if(!anyContent){ h+='<div class="print-empty">Noch keine Tagebucheinträge oder Fotos vorhanden. Schreibe zuerst etwas im Tagebuch einer Station.</div>'; }
+  h+='</div>';
+  var ov=document.getElementById('diaryPrintOverlay');
+  if(!ov){ ov=document.createElement('div'); ov.id='diaryPrintOverlay'; document.body.appendChild(ov); }
+  ov.innerHTML=h;
+  ov.scrollTop=0;
+  document.body.style.overflow='hidden';
+}
+function closeDiaryPrint(){
+  var ov=document.getElementById('diaryPrintOverlay');
+  if(ov) ov.parentNode.removeChild(ov);
+  document.body.style.overflow='';
+}
 
 // ===== LOKALE DOKUMENTE (nur auf diesem Gerät, IndexedDB) =====
 function loadLocalDocs(idx){
