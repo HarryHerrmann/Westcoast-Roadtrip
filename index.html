@@ -45,10 +45,18 @@
     .header-content { max-width: 760px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
     .header-left h1 { margin: 0; font-size: 18px; }
     .header-left .sub { font-size: 12px; color: var(--text-secondary); }
-    .header-right { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
-    .hbtn { background: var(--accent); color: white; border: none; border-radius: 8px; padding: 8px 10px; cursor: pointer; font-size: 13px; }
-    .hbtn.secondary { background: var(--bg); color: var(--text); border: 1px solid var(--border); }
+    .header-right { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+    .hbtn { display: inline-flex; align-items: center; justify-content: center; gap: 5px; background: var(--accent); color: #fff; border: none; border-radius: 10px; padding: 9px 12px; cursor: pointer; font-size: 13px; font-weight: 600; line-height: 1; white-space: nowrap; min-width: 108px; box-shadow: 0 1px 2px rgba(0,0,0,.12); transition: filter .15s, transform .05s; }
+    .hbtn:hover { filter: brightness(1.08); }
+    .hbtn:active { transform: translateY(1px); }
+    .hbtn.icon-only { min-width: 0; padding: 9px 11px; font-size: 15px; }
+    .hbtn.secondary { background: var(--bg); color: var(--text); border: 1px solid var(--border); box-shadow: none; }
     .hbtn.drive { background: #16a34a; }
+    @media (max-width: 560px) { .hbtn { min-width: calc(33.333% - 6px); flex: 1 1 calc(33.333% - 6px); } .hbtn.icon-only { min-width: 0; flex: 0 0 auto; } }
+    .icon-picker { display: grid; grid-template-columns: repeat(auto-fill, minmax(48px, 1fr)); gap: 6px; max-height: 190px; overflow-y: auto; padding: 8px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg); margin: 4px 0 10px; }
+    .icon-picker button { font-size: 22px; padding: 9px 0; border: 2px solid transparent; border-radius: 9px; background: var(--card-bg); cursor: pointer; line-height: 1; transition: border-color .1s, transform .05s; }
+    .icon-picker button:hover { transform: scale(1.08); }
+    .icon-picker button.sel { border-color: var(--accent); background: rgba(59,130,246,.14); }
     /* STATS */
     .stats { max-width: 760px; margin: 10px auto 0; padding: 0 16px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
     .stat { background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 8px; text-align: center; }
@@ -223,8 +231,8 @@
         <button class="hbtn" onclick="openConverter()">💱 Währung</button>
         <button class="hbtn" style="background:#dc2626" onclick="openEmergency()">🆘 Notfall</button>
         <button class="hbtn drive" onclick="openDrive()">📁 Drive</button>
-        <button class="hbtn secondary" onclick="setDrive()" title="Drive-Ordner festlegen">⚙️</button>
-        <button class="hbtn secondary" onclick="toggleDarkMode()" id="darkBtn">🌙</button>
+        <button class="hbtn secondary icon-only" onclick="setDrive()" title="Drive-Ordner festlegen">⚙️</button>
+        <button class="hbtn secondary icon-only" onclick="toggleDarkMode()" id="darkBtn" title="Hell/Dunkel umschalten">🌙</button>
       </div>
     </div>
   </header>
@@ -305,7 +313,10 @@
     <h2>➕ Zwischenstopp hinzufügen</h2>
     <p style="font-size:13px;color:var(--text-secondary);margin-top:0">Für spontane Stopps unterwegs – mit eigenem Tagebuch, Notizen & Fotos. Die bestehenden Stationen bleiben unverändert.</p>
     <input id="stopName" type="text" placeholder="Name (z.B. Aussichtspunkt am Highway 1)" style="width:100%;padding:12px;border:1px solid var(--border);border-radius:8px;background:var(--card-bg);color:var(--text);font-size:14px;margin-bottom:8px">
-    <input id="stopIcon" type="text" value="📍" placeholder="Emoji (optional)" style="width:100%;padding:12px;border:1px solid var(--border);border-radius:8px;background:var(--card-bg);color:var(--text);font-size:14px;margin-bottom:8px">
+    <label style="font-size:13px;color:var(--text-secondary)">Symbol wählen: <span id="stopIconPreview" style="font-size:18px">📍</span></label>
+    <div id="iconPicker" class="icon-picker"></div>
+    <input id="stopIcon" type="hidden" value="📍">
+    <input id="stopIconCustom" type="text" placeholder="… oder eigenes Emoji eintippen" oninput="onCustomIcon(this.value)" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--card-bg);color:var(--text);font-size:14px;margin-bottom:10px">
     <label style="font-size:13px;color:var(--text-secondary)">Einfügen nach welcher Station:</label>
     <select id="stopAfter" style="width:100%;padding:12px;border:1px solid var(--border);border-radius:8px;background:var(--card-bg);color:var(--text);font-size:14px;margin-top:4px"></select>
     <div style="display:flex;gap:8px;margin-top:14px">
@@ -379,7 +390,7 @@ var SHARED_LINKS = {
 // ============================================================
 
 // Fest eingebettete Dokumente (werden per Skript befüllt) — für alle sichtbar
-var SHARED_DOCS = {"0": [{"name": "2116424053 Mietwagen Voucher Herrrmann", "type": "application/pdf", "url": "docs/2116424053-mietwagen-voucher-herrrmann.pdf"}, {"name": "American.Beauty-Pass", "type": "application/pdf", "url": "docs/american-beauty-pass.pdf"}, {"name": "Flugtickets und Sitzpältze Flüge hin und zurück", "type": "application/pdf", "url": "docs/flugtickets-und-sitzpaeltze-fluege-hin-und-zurueck.pdf"}, {"name": "Harry-Esta-2026-Official ESTA Application Website, U.S. Customs and Border Prote", "type": "application/pdf", "url": "docs/harry-esta-2026-official-esta-application-website-.pdf"}, {"name": "Hotrel FLughafen Terminal 189181289 for Sheraton Frankfurt Airport Hotel and Con", "type": "application/pdf", "url": "docs/hotrel-flughafen-terminal-189181289-for-sheraton-f.pdf"}, {"name": "Jana Herrmann Reisepass", "type": "application/pdf", "url": "docs/jana-herrmann-reisepass.pdf"}, {"name": "Jana-ESTA-2026-Official ESTA Application Website, U.S. Customs and Border Protec", "type": "application/pdf", "url": "docs/jana-esta-2026-official-esta-application-website-u.pdf"}, {"name": "Leo Elias Herrmann Reisepass", "type": "application/pdf", "url": "docs/leo-elias-herrmann-reisepass.pdf"}, {"name": "Leo-Esta-2026-Official ESTA Application Website, U.S. Customs and Border Protect", "type": "application/pdf", "url": "docs/leo-esta-2026-official-esta-application-website-u-.pdf"}, {"name": "Mietwagen Zusatz-Haftpflicht", "type": "application/pdf", "url": "docs/mietwagen-zusatz-haftpflicht.pdf"}, {"name": "Parkos Velvet Parken Frankfurt", "type": "application/pdf", "url": "docs/parkos-velvet-parken-frankfurt.pdf"}, {"name": "Piet-ESTA-2026-Official ESTA Application Website, U.S. Customs and Border Protec", "type": "application/pdf", "url": "docs/piet-esta-2026-official-esta-application-website-u.pdf"}, {"name": "REISEPASS HARALD TOBIAS HERRMANN", "type": "application/pdf", "url": "docs/reisepass-harald-tobias-herrmann.pdf"}, {"name": "REISEPASS PIET TIMON HERRMANN", "type": "application/pdf", "url": "docs/reisepass-piet-timon-herrmann.pdf"}], "4": [{"name": "Anteloop Canyon Eintritt 14.07.26-CHDYAA0X1    4 Guest(s)", "type": "application/pdf", "url": "docs/anteloop-canyon-eintritt-14-07-26-chdyaa0x1-4-gues.pdf"}, {"name": "Boot Tour Lake Powel", "type": "application/pdf", "url": "docs/boot-tour-lake-powel.pdf"}, {"name": "Eintrittspreis  Antelope Canyon - Entry Fee on Tuesday, July 14, 2026", "type": "application/pdf", "url": "docs/eintrittspreis-antelope-canyon-entry-fee-on-tuesda.pdf"}], "2": [{"name": "Death-Valley-Booking.com  Bestätigung", "type": "application/pdf", "url": "docs/death-valley-booking-com-bestaetigung.pdf"}], "6": [{"name": "ED-Sheeran-Ticket Order Confirmed - GoTickets Order #5485985 (Ticketbestellung b", "type": "application/pdf", "url": "docs/ed-sheeran-ticket-order-confirmed-gotickets-order-.pdf"}], "11": [{"name": "Tickets-Alcatraz-30.07", "type": "application/pdf", "url": "docs/tickets-alcatraz-30-07.pdf"}], "1": [{"name": "Yousemite Booking.com  Bestätigung", "type": "application/pdf", "url": "docs/yousemite-booking-com-bestaetigung.pdf"}, {"name": "Yousemite Tickets Park", "type": "application/pdf", "url": "docs/yousemite-tickets-park.pdf"}]};
+var SHARED_DOCS = {"0": [{"name": "2116424053 Mietwagen Voucher Herrrmann", "type": "application/pdf", "url": "docs/2116424053-mietwagen-voucher-herrrmann.pdf"}, {"name": "American.Beauty-Pass", "type": "application/pdf", "url": "docs/american-beauty-pass.pdf"}, {"name": "Flugtickets und Sitzpältze Flüge hin und zurück", "type": "application/pdf", "url": "docs/flugtickets-und-sitzpaeltze-fluege-hin-und-zurueck.pdf"}, {"name": "Harry-Esta-2026-Official ESTA Application Website, U.S. Customs and Border Prote", "type": "application/pdf", "url": "docs/harry-esta-2026-official-esta-application-website-.pdf"}, {"name": "Hotrel FLughafen Terminal 189181289 for Sheraton Frankfurt Airport Hotel and Con", "type": "application/pdf", "url": "docs/hotrel-flughafen-terminal-189181289-for-sheraton-f.pdf"}, {"name": "Jana Herrmann Reisepass", "type": "application/pdf", "url": "docs/jana-herrmann-reisepass.pdf"}, {"name": "Jana-ESTA-2026-Official ESTA Application Website, U.S. Customs and Border Protec", "type": "application/pdf", "url": "docs/jana-esta-2026-official-esta-application-website-u.pdf"}, {"name": "Leo Elias Herrmann Reisepass", "type": "application/pdf", "url": "docs/leo-elias-herrmann-reisepass.pdf"}, {"name": "Leo-Esta-2026-Official ESTA Application Website, U.S. Customs and Border Protect", "type": "application/pdf", "url": "docs/leo-esta-2026-official-esta-application-website-u-.pdf"}, {"name": "Mietwagen Zusatz-Haftpflicht", "type": "application/pdf", "url": "docs/mietwagen-zusatz-haftpflicht.pdf"}, {"name": "Parkos Velvet Parken Frankfurt", "type": "application/pdf", "url": "docs/parkos-velvet-parken-frankfurt.pdf"}, {"name": "Piet-ESTA-2026-Official ESTA Application Website, U.S. Customs and Border Protec", "type": "application/pdf", "url": "docs/piet-esta-2026-official-esta-application-website-u.pdf"}, {"name": "REISEPASS HARALD TOBIAS HERRMANN", "type": "application/pdf", "url": "docs/reisepass-harald-tobias-herrmann.pdf"}, {"name": "REISEPASS PIET TIMON HERRMANN", "type": "application/pdf", "url": "docs/reisepass-piet-timon-herrmann.pdf"}, {"name": "barcode 469390468 6123798540001785290487 (1)", "type": "application/pdf", "url": "docs/barcode-469390468-6123798540001785290487-1.pdf"}], "4": [{"name": "Anteloop Canyon Eintritt 14.07.26-CHDYAA0X1    4 Guest(s)", "type": "application/pdf", "url": "docs/anteloop-canyon-eintritt-14-07-26-chdyaa0x1-4-gues.pdf"}, {"name": "Boot Tour Lake Powel", "type": "application/pdf", "url": "docs/boot-tour-lake-powel.pdf"}, {"name": "Eintrittspreis  Antelope Canyon - Entry Fee on Tuesday, July 14, 2026", "type": "application/pdf", "url": "docs/eintrittspreis-antelope-canyon-entry-fee-on-tuesda.pdf"}], "2": [{"name": "Death-Valley-Booking.com  Bestätigung", "type": "application/pdf", "url": "docs/death-valley-booking-com-bestaetigung.pdf"}], "6": [{"name": "ED-Sheeran-Ticket Order Confirmed - GoTickets Order #5485985 (Ticketbestellung b", "type": "application/pdf", "url": "docs/ed-sheeran-ticket-order-confirmed-gotickets-order-.pdf"}], "11": [{"name": "Tickets-Alcatraz-30.07", "type": "application/pdf", "url": "docs/tickets-alcatraz-30-07.pdf"}], "1": [{"name": "Yousemite Booking.com  Bestätigung", "type": "application/pdf", "url": "docs/yousemite-booking-com-bestaetigung.pdf"}, {"name": "Yousemite Tickets Park", "type": "application/pdf", "url": "docs/yousemite-tickets-park.pdf"}]};
 
 // ===== STATE =====
 var current = 0;
@@ -507,6 +518,40 @@ function markDone(idx){
 }
 
 // ===== EIGENE ZWISCHENSTOPPS =====
+// Auswahl an Symbolen für eigene Stopps (Reiseziel-Icons + Natur/Aktivitäten)
+var STOP_ICONS=[
+  ['📍','Ort'],['🏔️','Berge'],['⛰️','Aussicht'],['🌲','Wald'],['🌳','Bäume'],
+  ['🏜️','Wüste'],['🌵','Kaktus'],['🪨','Felsen'],['🌀','Canyon'],['🏞️','Natur'],
+  ['🏖️','Strand'],['🌊','Meer'],['🏊','Schwimmen'],['🏄','Surfen'],['🛶','Kanu'],
+  ['⛵','Boot'],['🎣','Angeln'],['🥾','Wandern'],['🏕️','Camping'],['🔥','Lagerfeuer'],
+  ['🌅','Sonnenaufgang'],['🌄','Sonnenuntergang'],['📸','Foto-Spot'],['🐻','Tiere'],['🦭','Wildlife'],
+  ['🍔','Essen'],['🍹','Chillen'],['😎','Relaxen'],['🌴','Palmen'],['☕','Kaffee'],
+  ['🏙️','Stadt'],['🌉','Brücke'],['🎰','Casino'],['🎸','Konzert'],['🎡','Freizeit'],
+  ['🚗','Fahrt'],['⛽','Tanken'],['🏨','Hotel'],['🛣️','Route'],['🗺️','Sehenswert']
+];
+function renderIconPicker(){
+  var box=document.getElementById('iconPicker'); if(!box) return;
+  var cur=document.getElementById('stopIcon').value, h='';
+  for(var i=0;i<STOP_ICONS.length;i++){
+    var em=STOP_ICONS[i][0], lb=STOP_ICONS[i][1];
+    h+='<button type="button" class="'+(em===cur?'sel':'')+'" title="'+lb+'" onclick="pickStopIcon(\''+em+'\')">'+em+'</button>';
+  }
+  box.innerHTML=h;
+}
+function pickStopIcon(em){
+  document.getElementById('stopIcon').value=em;
+  var cf=document.getElementById('stopIconCustom'); if(cf) cf.value='';
+  var pv=document.getElementById('stopIconPreview'); if(pv) pv.textContent=em;
+  renderIconPicker();
+}
+function onCustomIcon(v){
+  v=(v||'').trim();
+  if(v){ document.getElementById('stopIcon').value=v; }
+  else { document.getElementById('stopIcon').value='📍'; }
+  var pv=document.getElementById('stopIconPreview'); if(pv) pv.textContent=document.getElementById('stopIcon').value;
+  // Grid-Auswahl aufheben, wenn eigenes Emoji getippt wird
+  var box=document.getElementById('iconPicker'); if(box){ var bs=box.getElementsByTagName('button'); for(var i=0;i<bs.length;i++) bs[i].className=''; }
+}
 function openAddStop(){
   refreshRoute();
   var sel=document.getElementById('stopAfter'), opt='';
@@ -514,6 +559,9 @@ function openAddStop(){
   sel.innerHTML=opt;
   document.getElementById('stopName').value='';
   document.getElementById('stopIcon').value='📍';
+  var cf=document.getElementById('stopIconCustom'); if(cf) cf.value='';
+  var pv=document.getElementById('stopIconPreview'); if(pv) pv.textContent='📍';
+  renderIconPicker();
   document.getElementById('addStopModal').classList.add('open');
 }
 function saveStop(){
